@@ -6,7 +6,7 @@ Thumbs.db
 /backend/bootstrap/cache/*
 /backend/storage/*.key
 
-/frontend-web/node_modules/
-/frontend-web/dist/
-/frontend-web/.env
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.env
 
