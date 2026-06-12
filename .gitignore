@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+
+/backend/.env
+/backend/vendor/
+/backend/bootstrap/cache/*
+/backend/storage/*.key
+
+/frontend-web/node_modules/
+/frontend-web/dist/
+/frontend-web/.env
+

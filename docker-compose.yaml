@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  database:
+    image: mysql:8.0
+    container_name: service-database-mysql
+    restart: always
+    env_file:
+      - ./backend/.env
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-osp_database}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-osp_password}
+      MYSQL_USER: ${DB_USERNAME:-osp_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-osp_password}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - service-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: service-api-laravel
+    restart: always
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www/html
+      - ./backend/storage:/var/www/html/storage
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: database
+    depends_on:
+      - database
+    networks:
+      - service-network
+
+  web-panel:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: service-web-react
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    networks:
+      - service-network
+
+networks:
+  service-network:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
