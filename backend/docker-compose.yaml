@@ -1,0 +1,18 @@
+services:
+  # Baza Danych
+  db:
+    image: postgres:15-alpine
+    container_name: osp_db
+    restart: always
+    environment:
+      POSTGRES_USER: osp_user
+      POSTGRES_PASSWORD: QAZxsw123@
+      POSTGRES_DB: osp_database
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+
+volumes:
+  pgdata:
