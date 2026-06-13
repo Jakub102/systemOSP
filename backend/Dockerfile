@@ -31,4 +31,4 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 EXPOSE 80
 
 # 7. AUTOMATYZACJA STARTU:
-CMD sh -c "if [ ! -d 'vendor' ]; then composer install; fi && php artisan serve --host=0.0.0.0 --port=80"
+CMD sh -c "(composer install || composer update) && php artisan serve --host=0.0.0.0 --port=80"
