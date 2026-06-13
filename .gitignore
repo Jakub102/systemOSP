@@ -1,6 +1,8 @@
 .DS_Store
 Thumbs.db
 
+.env
+
 /backend/.env
 /backend/vendor/
 /backend/bootstrap/cache/*
@@ -9,4 +11,3 @@ Thumbs.db
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.env
-
