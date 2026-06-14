@@ -1,6 +1,6 @@
 #!/bin/sh
 
-echo "Checking and resolving Composer dependencies..."
+echo "Checking and resolving Composer dependencies... (this may take a few minutes)"
 if [ -d vendor ]; then
     composer install --no-interaction --quiet --ignore-platform-reqs
 else
@@ -22,6 +22,9 @@ echo "Database connection established successfully!"
 
 echo "Running database migrations..."
 php artisan migrate --force
+
+echo "Seeding database with test data..."
+php artisan db:seed --force
 
 echo "Everything is ready! Starting Laravel server..."
 exec "$@"
