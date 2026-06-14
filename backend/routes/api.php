@@ -4,14 +4,12 @@ use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// Publiczna trasa logowania
 Route::post('/login', [AuthController::class, 'login']);
 
-// Trasy chronione tokenem
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     
-    // Zwraca aktualnie zalogowanego użytkownika (przydatne przy odświeżeniu strony w React)
+    // Zwraca aktualnie zalogowanego użytkownika
     Route::get('/me', function (Request $request) {
         $account = $request->user()->load(['user.roles', 'user.firehouse']);
         return response()->json([
