@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('token', 64)->unique();
             $table->foreignId('role_id')->constrained('roles');
+            $table->foreignId('firehouse_id')->constrained('firehouse');
             $table->timestamp('expires_at');
             $table->timestamp('used_at')->nullable();
             $table->timestamps();

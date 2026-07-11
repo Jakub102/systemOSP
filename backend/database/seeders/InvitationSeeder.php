@@ -15,7 +15,8 @@ class InvitationSeeder extends Seeder
             [
                 'email' => 'kandydat1@vfd.pl',
                 'token' => Str::random(32),
-                'role_id' => 2, // Odkomentuj jeśli do zaproszenia przypisana jest rola
+                'role_id' => 2,
+                'firehouse_id'=> 1,
                 'expires_at' => Carbon::now()->addDays(2), // Odkomentuj jeśli zaproszenie wygasa
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
