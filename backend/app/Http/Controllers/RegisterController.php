@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\RegisterRequest;
 use App\Models\{Account, User, Invitation};
+use App\Mail\UserRegisteredMail;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\{Hash, DB};
 use Illuminate\Validation\ValidationException;
@@ -15,17 +17,20 @@ class RegisterController extends Controller
         $data = $request->validated();
         $invitation = Invitation::where('token', $data['token'])->first();
 
-        // 1. Sprawdzenie zaproszenia
+    // 1. Sprawdzenie zaproszenia
         if (!$invitation || !$invitation->isValid()) {
             throw ValidationException::withMessages(['token' => ['Zaproszenie nieprawidłowe.']]);
         }
 
-        // 2. Dodatkowy bezpiecznik: sprawdź czy e-mail z zaproszenia nie ma już konta
+    // 2. Sprawdzenie unikalności e-maila
         if (Account::where('email', $invitation->email)->exists()) {
             throw ValidationException::withMessages(['email' => ['Konto dla tego e-maila już istnieje.']]);
         }
 
-        DB::transaction(function () use ($data, $invitation) {
+    // Używamy zmiennej pomocniczej do przechwycenia użytkownika
+        $user = null;
+
+        DB::transaction(function () use ($data, $invitation, &$user) {
             $account = Account::create([
                 'email' => $invitation->email,
                 'password' => Hash::make($data['password']),
@@ -38,7 +43,7 @@ class RegisterController extends Controller
                 'last_name' => $data['last_name'],
                 'phone_number' => $data['phone_number'],
                 'firehouse_id' => $invitation->firehouse_id,
-                'is_active' => true, // Zostawiamy true dla wygody
+                'is_active' => true,
                 'status' => 'READY',
             ]);
 
@@ -46,6 +51,11 @@ class RegisterController extends Controller
             $invitation->update(['used_at' => now()]);
         });
 
+    // 3. Wysyłka maila po udanej transakcji
+        if ($user) {
+            Mail::to($user->account->email)->send(new UserRegisteredMail($user->first_name));
+        }
+
         return response()->json(['message' => 'Konto zostało utworzone.'], 201);
     }
-}
+}git
