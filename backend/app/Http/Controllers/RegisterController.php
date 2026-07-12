@@ -58,4 +58,4 @@ class RegisterController extends Controller
 
         return response()->json(['message' => 'Konto zostało utworzone.'], 201);
     }
-}git
+}
