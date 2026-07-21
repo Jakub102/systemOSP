@@ -1,18 +1,13 @@
 <?php
 //TODO: Do usunięcia 
-use App\Http\Controllers\AuthController;
-
 use App\Http\Controllers\InvitationController;
-use Illuminate\Support\Facades\Route;
 
 //TODO: Te poniżej są przebudowane
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
-
-// W routes/api.php
-// Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1'); // max 5 prób na minutę
-
+use App\Http\Controllers\Api\V1\Auth\UserController;
 
 Route::prefix('v1')->group(function(){
 
@@ -21,14 +16,10 @@ Route::prefix('v1')->group(function(){
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
             Route::post('/logout', LogoutController::class);
+            Route::post('/auth/refresh', [UserController::class, 'refresh']);
+            Route::get('/me', [UserController::class, 'me']);
         });
     });
-
-Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
-    Route::post('/auth/refresh', [AuthController::class, 'refresh']);
-    Route::get('/me', [AuthController::class, 'me']);
-    // Route::post('/logout', [AuthController::class, 'logout']);
-});
 
 
 // Trasy zabezpieczone (tylko dla zalogowanego admina)
@@ -40,5 +31,3 @@ Route::middleware(['auth:sanctum', 'throttle:5,1'])->group(function () {
 
 // Trasa publiczna (wywoływana przez formularz rejestracyjny na froncie)
 Route::get('/invitations/verify/{token}', [InvitationController::class, 'verify']);
-
-// Route::post('/register', [App\Http\Controllers\RegisterController::class, 'register']);
