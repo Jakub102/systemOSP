@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Auth;
 
 use App\Models\Invitation;
 use App\Mail\UserInvitationMail;
@@ -9,40 +9,30 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
-class InvitationController extends Controller
+class InvitationController
 {
-    /**
-     * Krok 1: Administrator tworzy lub aktualizuje zaproszenie
-     */
     public function store(Request $request): JsonResponse
     {
-        // Walidacja danych wejściowych
-        // Usunęliśmy 'unique:invitations,email', zostawiając tylko sprawdzenie, czy konto nie jest już zarejestrowane
         $data = $request->validate([
             'email' => ['required', 'string', 'email', 'unique:accounts,email'],
             'role_id' => ['required', 'exists:roles,id'],
-            'firehouse_id' => ['required', 'exists:firehouse,id'], // Poprawione z firehouse na firehouses (liczba mnoga)
+            'firehouse_id' => ['required', 'exists:firehouse,id'],
         ], [
             'email.unique' => 'Konto z tym adresem e-mail jest już zarejestrowane w systemie.',
         ]);
 
-        // Szukamy istniejącego zaproszenia dla tego maila lub tworzymy pusty obiekt modelu
         $invitation = Invitation::firstOrNew(['email' => $data['email']]);
 
-        // Nadpisujemy / ustawiamy nowe dane, świeży token oraz resetujemy czas do 48 godzin
         $invitation->role_id = $data['role_id'];
         $invitation->firehouse_id = $data['firehouse_id'];
         $invitation->token = Str::random(64);
         $invitation->expires_at = now()->addHours(48);
-        $invitation->used_at = null; // Na wypadek, gdyby admin chciał reaktywować stare zaproszenie
+        $invitation->used_at = null;
         
-        // Zapis do bazy (Laravel sam wie, czy zrobić INSERT czy UPDATE na podstawie firstOrNew)
         $invitation->save();
 
-        // Wysyłka maila z nowym tokenem
         Mail::to($invitation->email)->send(new UserInvitationMail($invitation));
 
-        // Sprawdzamy czy rekord istniał wcześniej, aby zwrócić ładny komunikat w API
         $message = $invitation->wasRecentlyCreated 
             ? 'Zaproszenie zostało pomyślnie wysłane.' 
             : 'Zaproszenie istniało w bazie. Token, czas wygaśnięcia oraz dane zostały zaktualizowane, a mail wysłany ponownie.';
@@ -52,9 +42,6 @@ class InvitationController extends Controller
         ], $invitation->wasRecentlyCreated ? 201 : 200);
     }
 
-    /**
-     * Krok 2: Frontend pyta API, czy token z URL jest poprawny zanim wyświetli formularz
-     */
     public function verify(string $token): JsonResponse
     {
         $invitation = Invitation::where('token', $token)->first();
@@ -74,7 +61,6 @@ class InvitationController extends Controller
 
     public function destroy(Invitation $invitation): JsonResponse
     {
-        // Usunięcie zaproszenia natychmiast unieważnia wysłany token
         $invitation->delete();
 
         return response()->json([
