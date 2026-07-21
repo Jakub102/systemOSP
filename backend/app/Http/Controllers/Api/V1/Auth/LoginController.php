@@ -18,7 +18,10 @@ class LoginController
         $throttleKey = Str::lower($request->email).'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            return response()->json(['message' => 'Zbyt wiele prób logowania. Spróbuj ponownie później.'], 429);
+            $seconds = RateLimiter::availableIn($throttleKey);
+            return response()->json([
+                'message' => __('auth.throttle', ['seconds' => $seconds])
+            ], 429);
         }
 
         $account = Account::where('email', $request->email)
@@ -27,11 +30,15 @@ class LoginController
 
         if (!$account || !Hash::check($request->password, $account->password)) {
             RateLimiter::hit($throttleKey, 60);
-            throw ValidationException::withMessages(['email' => ['Nieprawidłowe dane logowania.']]);
+            throw ValidationException::withMessages([
+                'email' => [__('auth.failed')]
+            ]);
         }
 
         if (!$account->user?->is_active) {
-            return response()->json(['message' => 'Konto jest nieaktywne.'], 403);
+            return response()->json([
+                'message' => __('auth.inactive')
+            ], 403);
         }
 
         RateLimiter::clear($throttleKey);

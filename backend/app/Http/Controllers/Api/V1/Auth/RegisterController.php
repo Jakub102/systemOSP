@@ -18,11 +18,11 @@ class RegisterController
         $invitation = Invitation::where('token', $data['token'])->first();
 
         if (!$invitation || !$invitation->isValid()) {
-            throw ValidationException::withMessages(['token' => ['Zaproszenie nieprawidłowe.']]);
+            throw ValidationException::withMessages(['token' =>  [__('auth.token')]]);
         }
 
         if (Account::where('email', $invitation->email)->exists()) {
-            throw ValidationException::withMessages(['email' => ['Konto dla tego e-maila już istnieje.']]);
+            throw ValidationException::withMessages(['email' =>  [__('auth.email')]]);
         }
 
         $user = null;

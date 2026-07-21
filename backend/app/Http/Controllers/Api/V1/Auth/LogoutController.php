@@ -11,7 +11,7 @@ class LogoutController
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Wylogowano pomyślnie.'
+            'message' => __('auth.logout')
         ], 200);
     }
 }
