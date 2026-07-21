@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Account;
 
 class DatabaseSeeder extends Seeder
 {
@@ -14,9 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        /**
-         * Seed
-         */
+        if (Account::exists()) {
+            $this->command->info('Database already seeded. Skipping seeders.');
+            return;
+        }
+
         $this->call([
             FirehouseSeeder::class,
             AccountSeeder::class,
