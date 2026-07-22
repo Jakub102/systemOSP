@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\V1\Invitation\StoreController as StoreInvitationCon
 use App\Http\Controllers\Api\V1\Invitation\VerifyController as VerifyInvitationController;
 use App\Http\Controllers\Api\V1\Invitation\CancellationController as CancelInvitationController;
 
+use App\Http\Controllers\Api\V1\Incident\IncidentController;
+
 Route::prefix('v1')->group(function(){
 
     Route::post('/login', LoginController::class)->middleware('throttle:5,1');
@@ -30,5 +32,14 @@ Route::prefix('v1')->group(function(){
         Route::post('/invitations', StoreInvitationController::class);
         Route::delete('/invitations/{invitation}', CancelInvitationController::class);
     });
+
+    Route::middleware([
+        'auth:sanctum', 
+        'throttle:5,1', 
+        'role:system'
+    ])->group(function () {
+        Route::post('/incident/new', [IncidentController::class, 'store']);
+    });
+
     });
 
