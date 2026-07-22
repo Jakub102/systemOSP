@@ -1,24 +1,34 @@
 <?php
 
-use App\Http\Controllers\AlarmController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\InvitationController;
+//TODO: Te poniżej są przebudowane
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\V1\Auth\LoginController;
+use App\Http\Controllers\Api\V1\Auth\LogoutController;
+use App\Http\Controllers\Api\V1\Auth\RegisterController;
+use App\Http\Controllers\Api\V1\Auth\UserController;
+use App\Http\Controllers\Api\V1\Invitation\StoreController as StoreInvitationController;
+use App\Http\Controllers\Api\V1\Invitation\VerifyController as VerifyInvitationController;
+use App\Http\Controllers\Api\V1\Invitation\CancellationController as CancelInvitationController;
 
+Route::prefix('v1')->group(function(){
 
-Route::get('/test', function () {
-    return response()->json([
-        'status' => 'API dziala'
-    ]);
-});
+    Route::post('/login', LoginController::class)->middleware('throttle:5,1');
+    Route::post('/register', RegisterController::class)->middleware('throttle:5,1');
+    Route::get('/invitations/verify/{token}', VerifyInvitationController::class);
 
-Route::apiResource('tasks', TaskController::class);
+    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+            Route::post('/logout', LogoutController::class);
+            Route::post('/auth/refresh', [UserController::class, 'refresh']);
+            Route::get('/me', [UserController::class, 'me']);
+        });
 
-// Zmienione na 'match', aby można było wejść metodą GET z poziomu przeglądarki na czas testów
-Route::match(['get', 'post'], '/reports', [AlarmController::class, 'store']);
+    Route::middleware([
+        'auth:sanctum', 
+        'throttle:5,1', 
+        'role:admin,president,vicepresident,chief,chiefassistent,quartermaster,treasurer'
+    ])->group(function () {
+        Route::post('/invitations', StoreInvitationController::class);
+        Route::delete('/invitations/{invitation}', CancelInvitationController::class);
+    });
+    });
 
-// Mechanika Logowania, Rejestracji oraz Generowania zaproszeń
-Route::match(['get', 'post'], '/auth/login', [AuthController::class, 'login']);
-Route::match(['get', 'post'], '/auth/register', [AuthController::class, 'register']);
-Route::match(['get', 'post'], '/invitations/generate', [InvitationController::class, 'generate']);

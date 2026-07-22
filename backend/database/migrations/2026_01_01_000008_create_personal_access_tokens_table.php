@@ -11,16 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('invitations', function (Blueprint $table) {
+        Schema::create('personal_access_tokens', function (Blueprint $table) {
             $table->id();
-            $table->string('email')->unique();
+            $table->morphs('tokenable');
+            $table->text('name');
             $table->string('token', 64)->unique();
-            $table->foreignId('role_id')->constrained('roles');
-            $table->foreignId('firehouse_id')->constrained('firehouse');
-            $table->timestamp('expires_at');
-            $table->timestamp('used_at')->nullable();
+            $table->text('abilities')->nullable();
+            $table->timestamp('last_used_at')->nullable();
+            $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
-        }); 
+        });
     }
 
     /**
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('invitations');
+        Schema::dropIfExists('personal_access_tokens');
     }
 };

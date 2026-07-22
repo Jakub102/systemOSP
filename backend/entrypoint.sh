@@ -23,7 +23,7 @@ echo "Database connection established successfully!"
 echo "Running database migrations..."
 php artisan migrate --force
 
-echo "Seeding database with test data..."
+echo "Seeding database with test data (if empty)..."
 php artisan db:seed --force
 
 echo "Everything is ready! Starting Laravel server..."
