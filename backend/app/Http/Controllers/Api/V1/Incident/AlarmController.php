@@ -14,7 +14,6 @@ class AlarmController
     public function __invoke(IncidentRequest $request, IncidentController $incidentController): IncidentResource
     {
         $incidentResource = $incidentController->store($request);
-        
         $incident = $incidentResource->resource;
 
         $fcmMessageId = $this->fcmService->sendIncidentAlert($incident);

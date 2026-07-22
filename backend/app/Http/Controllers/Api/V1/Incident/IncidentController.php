@@ -17,9 +17,11 @@ class IncidentController
         return IncidentResource::collection($incidents);
     }
 
-    public function store(IncidentRequest $request): IncidentResource
+    public function store(IncidentRequest $request, array $additionalData = []): IncidentResource
     {
-        $incident = Incident::create($request->validated());
+        $data = array_merge($request->validated(), $additionalData);
+    
+        $incident = Incident::create($data);
 
         return new IncidentResource($incident);
     }

@@ -13,7 +13,7 @@ class FcmService
 {
     public function __construct(protected Messaging $messaging) {}
 
-    public function sendIncidentAlert(Incident $incident): ?string
+    public function sendIncidentAlert(Incident $incident): ?array
     {
         $categoryNames = [
             'F' => 'Pożar',
@@ -43,6 +43,18 @@ class FcmService
             'address' => (string) $incident->address,
         ];
 
+        $fullPayload = [
+            'topic' => 'system-alert',
+            'title' => $title,
+            'body' => $body,
+            'android_config' => [
+                'priority' => 'high',
+                'channel_id' => 'emergency_alarm_channel',
+                'sound' => 'alarm_siren',
+            ],
+            'data_payload' => $dataPayload,
+        ];
+
         try {
             $androidConfig = AndroidConfig::fromArray([
                 'priority' => 'high',
@@ -59,16 +71,7 @@ class FcmService
                 ->withData($dataPayload)
                 ->withAndroidConfig($androidConfig);
 
-            Log::info('FCM Alert Payload Sent to Google:', [
-                'topic' => 'system-alert',
-                'title' => $title,
-                'android_config' => [
-                    'priority' => 'high',
-                    'channel_id' => 'emergency_alarm_channel',
-                    'sound' => 'alarm_siren',
-                ],
-                'data_payload' => $dataPayload,
-            ]);
+            Log::info('FCM Alert Payload Sent to Google:', $fullPayload);
 
             $response = $this->messaging->send($message);
 
@@ -77,7 +80,10 @@ class FcmService
 
                 Log::info("FCM Success | ID: {$fcmMessageId}");
 
-                return $fcmMessageId;
+                return [
+                    'fcm_message_id' => $fcmMessageId,
+                    'raw_payload' => $fullPayload,
+                ];
             }
 
             return null;
