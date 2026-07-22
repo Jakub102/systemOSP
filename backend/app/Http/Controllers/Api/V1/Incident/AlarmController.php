@@ -19,10 +19,8 @@ class AlarmController
 
         $fcmMessageId = $this->fcmService->sendIncidentAlert($incident);
 
-        if ($fcmMessageId) {
-            Log::info("Powiadomienie wysłane do FCM. ID: " . $fcmMessageId);
-        } else {
-            Log::error("Błąd wysyłki powiadomienia dla incydentu o ID: " . $incident->id);
+        if (!$fcmMessageId) {
+            Log::error("Kontroler odnotował brak ID powiadomienia FCM dla incydentu o ID: " . $incident->id);
         }
 
         return new IncidentResource($incident->load('users'));
