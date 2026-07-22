@@ -9,8 +9,7 @@ use App\Http\Controllers\Api\V1\Auth\UserController;
 use App\Http\Controllers\Api\V1\Invitation\StoreController as StoreInvitationController;
 use App\Http\Controllers\Api\V1\Invitation\VerifyController as VerifyInvitationController;
 use App\Http\Controllers\Api\V1\Invitation\CancellationController as CancelInvitationController;
-
-use App\Http\Controllers\Api\V1\Incident\IncidentController;
+use App\Http\Controllers\Api\V1\Incident\AlarmController;
 
 Route::prefix('v1')->group(function(){
 
@@ -38,7 +37,7 @@ Route::prefix('v1')->group(function(){
         'throttle:5,1', 
         'role:system'
     ])->group(function () {
-        Route::post('/incident/new', [IncidentController::class, 'store']);
+        Route::post('/incident/new', AlarmController::class);
     });
 
     });

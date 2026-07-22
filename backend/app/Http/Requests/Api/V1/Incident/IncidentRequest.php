@@ -11,6 +11,25 @@ class IncidentRequest extends FormRequest
         return true;
     }
 
+protected function prepareForValidation(): void
+{
+    if (!$this->has('external_id') || empty($this->input('external_id'))) {
+        $mainCategory = $this->input('main_category');
+        $prefixCategory = strtoupper(substr($mainCategory, 0, 1)); 
+        $year = now()->format('Y'); 
+
+        $count = \App\Models\Incident::where('main_category', $mainCategory)
+            ->whereYear('created_at', $year)
+            ->count();
+        
+        $nextNumber = $count + 1;
+
+        $this->merge([
+            'external_id' => "INC-{$year}-{$prefixCategory}-{$nextNumber}"
+        ]);
+    }
+}
+
     public function rules(): array
     {
         $isUpdate = $this->isMethod('put') || $this->isMethod('patch');
