@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1\Auth;
+namespace App\Http\Controllers\Api\Auth;
 
-use App\Http\Requests\Api\V1\Auth\RegisterRequest;
+use App\Http\Requests\Api\Auth\RegisterRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\{Hash, DB};
 use Illuminate\Support\Facades\Mail;

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1\Invitation;
+namespace App\Http\Controllers\Api\Invitation;
 
 
-use App\Http\Requests\Api\V1\Invitation\StoreRequest; // Użyj swojego requestu
+use App\Http\Requests\Api\Invitation\StoreRequest; // Użyj swojego requestu
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Invitation;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1\Invitation;
+namespace App\Http\Controllers\Api\Invitation;
 
 use App\Models\Invitation;
 use Illuminate\Http\JsonResponse;

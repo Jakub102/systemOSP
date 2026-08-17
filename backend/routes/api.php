@@ -2,14 +2,13 @@
 
 //TODO: Te poniżej są przebudowane
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\Auth\LoginController;
-use App\Http\Controllers\Api\V1\Auth\LogoutController;
-use App\Http\Controllers\Api\V1\Auth\RegisterController;
-use App\Http\Controllers\Api\V1\Auth\UserController;
-use App\Http\Controllers\Api\V1\Invitation\StoreController as StoreInvitationController;
-use App\Http\Controllers\Api\V1\Invitation\VerifyController as VerifyInvitationController;
-use App\Http\Controllers\Api\V1\Invitation\CancellationController as CancelInvitationController;
-use App\Http\Controllers\Api\V1\Incident\AlarmController;
+use App\Http\Controllers\Api\Auth\LoginController;
+use App\Http\Controllers\Api\Auth\LogoutController;
+use App\Http\Controllers\Api\Auth\RegisterController;
+use App\Http\Controllers\Api\Auth\UserController;
+use App\Http\Controllers\Api\Invitation\StoreController as StoreInvitationController;
+use App\Http\Controllers\Api\Invitation\VerifyController as VerifyInvitationController;
+use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitationController;
 
 Route::prefix('v1')->group(function(){
 
