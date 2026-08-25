@@ -13,10 +13,12 @@
     },
     "plugins": [
       "./plugins/withAlarmSound",
-      ["expo-av", { "microphonePermission": false }]
+      ["expo-av", { "microphonePermission": false }],
+      "@react-native-firebase/app"
     ],
     "android": {
       "package": "pl.osp.ospmobilka",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE",
