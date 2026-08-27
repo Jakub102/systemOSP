@@ -21,7 +21,8 @@ import {
   KeyRound, 
   ShieldCheck,
   Mail,
-  Phone
+  Phone,
+  BellRing
 } from 'lucide-react';
 import { api, ApiError, clearSession, getStoredToken, getStoredUser, saveSession } from './api';
 import type { AuthUser, Invitation, RegisterPayload } from './api';
@@ -37,15 +38,46 @@ interface FirefighterUser {
   status: 'Aktywny' | 'Nieaktywny';
 }
 
+type MainCategory = 'F' | 'LT' | 'A' | 'M' | 'FA';
+
 interface Incident {
   id: string;
-  incidentNo: string;
-  type: 'Pożar' | 'Miejscowe Zagrożenie' | 'Fałszywy Alarm' | 'Ćwiczenia';
-  location: string;
+  main_category: MainCategory;
+  sub_category: string;
   description: string;
-  caller: string;
-  status: 'Przyjęte' | 'W toku' | 'Zakończone';
-  createdAt: string;
+  incident_time: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  status: 'ACTIVE' | 'END';
+  notified: boolean;
+}
+
+const MAIN_CATEGORY_LABELS: Record<MainCategory, string> = {
+  F: 'Pożar',
+  LT: 'Miejscowe zagrożenie',
+  A: 'Wypadek',
+  M: 'Zdarzenie medyczne',
+  FA: 'Fałszywy alarm',
+};
+
+const STATUS_LABELS: Record<Incident['status'], string> = {
+  ACTIVE: 'W toku',
+  END: 'Zakończone',
+};
+
+function nowLocalInput(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatIncidentTime(value: string): string {
+  const d = new Date(value.replace(' ', 'T'));
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleString('pl-PL', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
 }
 
 const INITIAL_USERS: FirefighterUser[] = [
@@ -56,9 +88,9 @@ const INITIAL_USERS: FirefighterUser[] = [
 ];
 
 const INITIAL_INCIDENTS: Incident[] = [
-  { id: '1', incidentNo: 'ZD/2026/08/0101', type: 'Pożar', location: 'ul. Święty Marcin 14, Poznań', description: 'Pożar poddasza w kamienicy', caller: '112 / Zgłoszenie tel.', status: 'W toku', createdAt: '13:15:20' },
-  { id: '2', incidentNo: 'ZD/2026/08/0102', type: 'Miejscowe Zagrożenie', location: 'ul. Hetmańska / Głogowska', description: 'Kolizja 2 aut osobowych, wyciek płynów', caller: 'WCPR', status: 'Przyjęte', createdAt: '13:42:05' },
-  { id: '3', incidentNo: 'ZD/2026/08/0099', type: 'Fałszywy Alarm', location: 'ul. Półwiejska 32', description: 'Załączenie czujki SAP w centrum handlowym', caller: 'Monitoring SAP', status: 'Zakończone', createdAt: '11:04:12' },
+  { id: '1', main_category: 'F', sub_category: 'Budynek mieszkalny', description: 'Zgłoszenie o zadymieniu na klatce schodowej w budynku wielorodzinnym. Wyczuwalny zapach spalenizny z mieszkania na 2. piętrze.', incident_time: '2026-07-22 11:15:00', address: 'ul. Strażacka 12, 00-515 Warszawa', latitude: 52.21584, longitude: 21.01121, status: 'ACTIVE', notified: true },
+  { id: '2', main_category: 'LT', sub_category: 'Kolizja drogowa', description: 'Kolizja 2 aut osobowych, wyciek płynów eksploatacyjnych na jezdnię.', incident_time: '2026-07-22 09:40:00', address: 'ul. Hetmańska / Głogowska, Poznań', latitude: 52.3924, longitude: 16.90212, status: 'END', notified: false },
+  { id: '3', main_category: 'M', sub_category: 'Zasłabnięcie', description: 'Zasłabnięcie osoby w centrum handlowym. Zespół medyczny w drodze.', incident_time: '2026-07-22 08:05:00', address: 'ul. Półwiejska 32, Poznań', latitude: 52.40637, longitude: 16.9307, status: 'ACTIVE', notified: false },
 ];
 
 export default function App() {
@@ -88,6 +120,8 @@ export default function App() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sendingIncident, setSendingIncident] = useState(false);
+  const [flashMsg, setFlashMsg] = useState('');
 
   const [userModal, setUserModal] = useState<{ open: boolean; mode: 'add' | 'edit'; data: Partial<FirefighterUser> }>({
     open: false,
@@ -131,6 +165,12 @@ export default function App() {
       .then(setInvitation)
       .catch(err => setInvitationError(err instanceof ApiError ? err.message : 'Nieprawidłowy lub wygasły token zaproszenia.'));
   }, [authView, registerToken]);
+
+  useEffect(() => {
+    if (!flashMsg) return;
+    const t = setTimeout(() => setFlashMsg(''), 4000);
+    return () => clearTimeout(t);
+  }, [flashMsg]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -261,50 +301,70 @@ export default function App() {
   };
 
   const handleOpenAddIncident = () => {
-    const currentNum = incidents.length + 105;
-    const now = new Date();
-    const timeString = now.toTimeString().split(' ')[0];
     setIncidentModal({
       open: true,
       data: {
-        incidentNo: `ZD/2026/08/0${currentNum}`,
-        type: 'Pożar',
-        location: '',
+        main_category: 'F',
+        sub_category: '',
         description: '',
-        caller: 'WCPR 112',
-        status: 'Przyjęte',
-        createdAt: timeString
+        incident_time: nowLocalInput(),
+        address: '',
+        latitude: 52.21584,
+        longitude: 21.01121,
+        status: 'ACTIVE'
       }
     });
   };
 
   const handleSaveIncident = (e: React.FormEvent) => {
     e.preventDefault();
+    let incident_time = (incidentModal.data.incident_time || nowLocalInput()).replace('T', ' ');
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(incident_time)) {
+      incident_time += ':00';
+    }
     const newInc: Incident = {
       id: String(Date.now()),
-      incidentNo: incidentModal.data.incidentNo || `ZD/2026/08/${Date.now().toString().slice(-4)}`,
-      type: (incidentModal.data.type as any) || 'Miejscowe Zagrożenie',
-      location: incidentModal.data.location || 'Nieokreślona lokalizacja',
-      description: incidentModal.data.description || 'Brak dodatkowego opisu',
-      caller: incidentModal.data.caller || '112',
-      status: (incidentModal.data.status as any) || 'Przyjęte',
-      createdAt: incidentModal.data.createdAt || '12:00:00'
+      main_category: incidentModal.data.main_category || 'F',
+      sub_category: incidentModal.data.sub_category?.trim() || 'Nieokreślona',
+      description: incidentModal.data.description?.trim() || 'Brak dodatkowego opisu',
+      incident_time,
+      address: incidentModal.data.address?.trim() || 'Nieokreślona lokalizacja',
+      latitude: Number(incidentModal.data.latitude) || 0,
+      longitude: Number(incidentModal.data.longitude) || 0,
+      status: 'ACTIVE',
+      notified: false
     };
     setIncidents([newInc, ...incidents]);
     setSelectedIncidentId(newInc.id);
     setIncidentModal({ open: false, data: {} });
   };
 
-  const handleChangeIncidentStatus = (status: 'Przyjęte' | 'W toku' | 'Zakończone') => {
+  const handleChangeIncidentStatus = (status: 'ACTIVE' | 'END') => {
     if (selectedIncidentId) {
       setIncidents(incidents.map(i => i.id === selectedIncidentId ? { ...i, status } : i));
     }
   };
 
-  const activeIncidentsCount = incidents.filter(i => i.status === 'W toku').length;
-  const pendingIncidentsCount = incidents.filter(i => i.status === 'Przyjęte').length;
-  const completedIncidentsCount = incidents.filter(i => i.status === 'Zakończone').length;
+  const handleSendIncident = async () => {
+    if (!selectedIncidentId) return;
+    const target = incidents.find(i => i.id === selectedIncidentId);
+    if (!target || target.notified) return;
+
+    setSendingIncident(true);
+    await new Promise(resolve => setTimeout(resolve, 600));
+    setIncidents(incidents.map(i => i.id === selectedIncidentId ? { ...i, notified: true } : i));
+    setSendingIncident(false);
+    setFlashMsg(`Zdarzenie (${MAIN_CATEGORY_LABELS[target.main_category]} - ${target.sub_category}) wysłane do aplikacji mobilnej.`);
+  };
+
+  const activeIncidentsCount = incidents.filter(i => i.status === 'ACTIVE').length;
   const activeUsersCount = users.filter(u => u.status === 'Aktywny').length;
+  const selectedIncident = incidents.find(i => i.id === selectedIncidentId) ?? null;
+
+  const fireCount = incidents.filter(i => i.main_category === 'F').length;
+  const hazardCount = incidents.filter(i => i.main_category === 'LT').length;
+  const accidentCount = incidents.filter(i => i.main_category === 'A').length;
+  const medicalCount = incidents.filter(i => i.main_category === 'M').length;
 
   const filteredUsers = users.filter(u => 
     u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -312,10 +372,12 @@ export default function App() {
     u.unit.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const q = searchTerm.toLowerCase();
   const filteredIncidents = incidents.filter(i => 
-    i.incidentNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    i.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    i.description.toLowerCase().includes(searchTerm.toLowerCase())
+    i.sub_category.toLowerCase().includes(q) ||
+    i.description.toLowerCase().includes(q) ||
+    i.address.toLowerCase().includes(q) ||
+    MAIN_CATEGORY_LABELS[i.main_category].toLowerCase().includes(q)
   );
 
   // ===== Ekran logowania / rejestracji =====
@@ -708,12 +770,20 @@ export default function App() {
                   </div>
                   <div className="stat-detail">
                     <div className="stat-detail-row">
-                      <span>• Zgłoszenia przyjęte (Oczekujące):</span>
-                      <span className="stat-detail-val stat-detail-val-warn">{pendingIncidentsCount}</span>
+                      <span>• Pożary (F):</span>
+                      <span className="stat-detail-val">{fireCount}</span>
                     </div>
                     <div className="stat-detail-row">
-                      <span>• Zakończone działania:</span>
-                      <span className="stat-detail-val stat-detail-val-ok">{completedIncidentsCount}</span>
+                      <span>• Zagrożenia (LT):</span>
+                      <span className="stat-detail-val">{hazardCount}</span>
+                    </div>
+                    <div className="stat-detail-row">
+                      <span>• Wypadki (A):</span>
+                      <span className="stat-detail-val">{accidentCount}</span>
+                    </div>
+                    <div className="stat-detail-row">
+                      <span>• Zdarzenia medyczne (M):</span>
+                      <span className="stat-detail-val">{medicalCount}</span>
                     </div>
                   </div>
                   <button 
@@ -805,7 +875,7 @@ export default function App() {
                   </button>
                   <div className="tool-divider" />
                   <button 
-                    onClick={() => handleChangeIncidentStatus('W toku')}
+                    onClick={() => handleChangeIncidentStatus('ACTIVE')}
                     disabled={!selectedIncidentId}
                     className="tool-btn"
                   >
@@ -813,12 +883,21 @@ export default function App() {
                     <span>Dysponuj (W toku)</span>
                   </button>
                   <button 
-                    onClick={() => handleChangeIncidentStatus('Zakończone')}
+                    onClick={() => handleChangeIncidentStatus('END')}
                     disabled={!selectedIncidentId}
                     className="tool-btn"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Zakończ akcję</span>
+                  </button>
+                  <div className="tool-divider" />
+                  <button 
+                    onClick={handleSendIncident}
+                    disabled={!selectedIncidentId || sendingIncident || !!selectedIncident?.notified}
+                    className="tool-btn"
+                  >
+                    <BellRing className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{sendingIncident ? 'Wysyłanie...' : selectedIncident?.notified ? 'Wysłano (push)' : 'Wyślij zdarzenie (push)'}</span>
                   </button>
                 </>
               )}
@@ -834,6 +913,13 @@ export default function App() {
                 />
               </div>
             </div>
+
+            {flashMsg && (
+              <div className="flash-bar">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>{flashMsg}</span>
+              </div>
+            )}
 
             <div className="table-scroll">
               {activeTab === 'users' ? (
@@ -897,11 +983,11 @@ export default function App() {
                   <thead>
                     <tr className="table-head">
                       <th className="th w-10 text-center">#</th>
-                      <th className="th w-32">Numer Meldunku</th>
-                      <th className="th w-36">Rodzaj Zdarzenia</th>
-                      <th className="th w-48">Adres / Lokalizacja</th>
+                      <th className="th w-24">Kategoria</th>
+                      <th className="th w-36">Podkategoria</th>
                       <th className="th">Opis / Sytuacja</th>
-                      <th className="th w-24 text-center">Czas</th>
+                      <th className="th w-32 text-center">Czas zdarzenia</th>
+                      <th className="th w-48">Adres / Lokalizacja</th>
                       <th className="th w-24 text-center">Status</th>
                     </tr>
                   </thead>
@@ -918,27 +1004,29 @@ export default function App() {
                           <td className="td td-idx">
                             {index + 1}
                           </td>
-                          <td className="td td-no">
-                            {inc.incidentNo}
-                          </td>
                           <td className="td">
-                            {inc.type}
+                            <span className={`badge badge-cat badge-cat-${inc.main_category}`}>
+                              {MAIN_CATEGORY_LABELS[inc.main_category]}
+                            </span>
                           </td>
                           <td className="td td-strong">
-                            {inc.location}
+                            {inc.sub_category}
                           </td>
                           <td className="td td-clip">
                             {inc.description}
                           </td>
-                          <td className="td td-center">
-                            {inc.createdAt}
+                          <td className="td td-center whitespace-nowrap">
+                            {formatIncidentTime(inc.incident_time)}
+                          </td>
+                          <td className="td">
+                            <div>{inc.address}</div>
+                            <div className="text-[10px] text-neutral-500">
+                              {inc.latitude.toFixed(6)}, {inc.longitude.toFixed(6)}
+                            </div>
                           </td>
                           <td className="td td-center">
-                            <span className={`badge badge-status ${
-                              inc.status === 'Przyjęte' ? 'badge-pending' :
-                              inc.status === 'W toku' ? 'badge-live' : 'badge-done'
-                            }`}>
-                              {inc.status}
+                            <span className={`badge badge-status ${inc.status === 'ACTIVE' ? 'badge-live' : 'badge-done'}`}>
+                              {STATUS_LABELS[inc.status]}
                             </span>
                           </td>
                         </tr>
@@ -953,7 +1041,7 @@ export default function App() {
               {activeTab === 'users' ? (
                 <div>Użytkowników w systemie: <span className="font-semibold text-neutral-900">{users.length}</span> | Zaznaczono: <span className="font-semibold text-neutral-900">{selectedUserId ? '1' : '0'}</span></div>
               ) : (
-                <div>Łącznie zdarzeń w dobie: <span className="font-semibold text-neutral-900">{incidents.length}</span> | Aktywnych (w toku): <span className="font-bold text-red-700">{activeIncidentsCount}</span></div>
+                <div>Łącznie zdarzeń w dobie: <span className="font-semibold text-neutral-900">{incidents.length}</span> | Aktywnych (w toku): <span className="font-bold text-red-700">{activeIncidentsCount}</span> | Push wysłany: <span className="font-semibold text-neutral-900">{incidents.filter(i => i.notified).length}</span></div>
               )}
               <div>Zalogowano: {currentUser.full_name}</div>
             </div>
@@ -1075,49 +1163,78 @@ export default function App() {
 
             <form onSubmit={handleSaveIncident} className="modal-form">
               <div className="field-row">
-                <label className="modal-label">Numer Zdarzenia:</label>
-                <input 
-                  type="text" 
-                  readOnly
-                  value={incidentModal.data.incidentNo || ''} 
-                  className="modal-input modal-input-ro"
-                />
-              </div>
-
-              <div className="field-row">
-                <label className="modal-label">Rodzaj zdarzenia:</label>
+                <label className="modal-label">Kategoria główna:</label>
                 <select 
-                  value={incidentModal.data.type || 'Pożar'}
-                  onChange={e => setIncidentModal({...incidentModal, data: {...incidentModal.data, type: e.target.value as any}})}
+                  value={incidentModal.data.main_category || 'F'}
+                  onChange={e => setIncidentModal({...incidentModal, data: {...incidentModal.data, main_category: e.target.value as any}})}
                   className="modal-input"
                 >
-                  <option value="Pożar">Pożar (P)</option>
-                  <option value="Miejscowe Zagrożenie">Miejscowe Zagrożenie (MZ)</option>
-                  <option value="Fałszywy Alarm">Alarm Fałszywy (AF)</option>
-                  <option value="Ćwiczenia">Ćwiczenia / Manewry</option>
+                  <option value="F">F - Pożar</option>
+                  <option value="LT">LT - Miejscowe zagrożenie</option>
+                  <option value="A">A - Wypadek</option>
+                  <option value="M">M - Zdarzenie medyczne</option>
+                  <option value="FA">FA - Fałszywy alarm</option>
                 </select>
               </div>
 
               <div className="field-row">
-                <label className="modal-label">Dokładny adres:</label>
+                <label className="modal-label">Podkategoria:</label>
                 <input 
                   type="text" 
                   required
-                  value={incidentModal.data.location || ''} 
-                  onChange={e => setIncidentModal({...incidentModal, data: {...incidentModal.data, location: e.target.value}})}
+                  value={incidentModal.data.sub_category || ''} 
+                  onChange={e => setIncidentModal({...incidentModal, data: {...incidentModal.data, sub_category: e.target.value}})}
+                  className="modal-input"
+                  placeholder="np. Budynek mieszkalny"
+                />
+              </div>
+
+              <div className="field-row">
+                <label className="modal-label">Adres zdarzenia:</label>
+                <input 
+                  type="text" 
+                  required
+                  value={incidentModal.data.address || ''} 
+                  onChange={e => setIncidentModal({...incidentModal, data: {...incidentModal.data, address: e.target.value}})}
                   className="modal-input"
                   placeholder="Miejscowość, ulica, nr domu/km trasy"
                 />
               </div>
 
               <div className="field-row">
-                <label className="modal-label">Zgłaszający / Źródło:</label>
+                <label className="modal-label">Czas zdarzenia:</label>
                 <input 
-                  type="text" 
-                  value={incidentModal.data.caller || ''} 
-                  onChange={e => setIncidentModal({...incidentModal, data: {...incidentModal.data, caller: e.target.value}})}
+                  type="datetime-local" 
+                  required
+                  value={incidentModal.data.incident_time || ''} 
+                  onChange={e => setIncidentModal({...incidentModal, data: {...incidentModal.data, incident_time: e.target.value}})}
                   className="modal-input"
-                  placeholder="np. CPR 112 / Patrol Policji"
+                />
+              </div>
+
+              <div className="field-row">
+                <label className="modal-label">Szerokość (lat):</label>
+                <input 
+                  type="number" 
+                  required
+                  step="any"
+                  value={Number.isFinite(incidentModal.data.latitude) ? incidentModal.data.latitude : ''} 
+                  onChange={e => setIncidentModal({...incidentModal, data: {...incidentModal.data, latitude: parseFloat(e.target.value)}})}
+                  className="modal-input"
+                  placeholder="52.21584"
+                />
+              </div>
+
+              <div className="field-row">
+                <label className="modal-label">Długość (lng):</label>
+                <input 
+                  type="number" 
+                  required
+                  step="any"
+                  value={Number.isFinite(incidentModal.data.longitude) ? incidentModal.data.longitude : ''} 
+                  onChange={e => setIncidentModal({...incidentModal, data: {...incidentModal.data, longitude: parseFloat(e.target.value)}})}
+                  className="modal-input"
+                  placeholder="21.01121"
                 />
               </div>
 

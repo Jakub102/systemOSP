@@ -250,6 +250,9 @@
   .status-bar {
     @apply bg-[#f0f0f0] border border-[#c0c0c0] p-2 text-[11px] font-mono flex items-center justify-between text-neutral-600;
   }
+  .flash-bar {
+    @apply border-b border-[#c0c0c0] bg-emerald-50 px-2 py-1 text-[11px] text-emerald-800 flex items-center gap-1.5;
+  }
 
   /* ===== Okno tabeli ===== */
   .win-window {
@@ -357,6 +360,21 @@
   .badge-status {
     @apply inline-block min-w-16;
   }
+  .badge-cat-F {
+    @apply bg-red-100 text-red-800;
+  }
+  .badge-cat-LT {
+    @apply bg-amber-100 text-amber-800;
+  }
+  .badge-cat-A {
+    @apply bg-orange-100 text-orange-800;
+  }
+  .badge-cat-M {
+    @apply bg-emerald-100 text-emerald-800;
+  }
+  .badge-cat-FA {
+    @apply bg-neutral-200 text-neutral-700;
+  }
   .badge-on {
     @apply text-emerald-700 bg-emerald-50;
   }
@@ -378,6 +396,10 @@
   }
   .tr-selected .badge-status {
     background: transparent;
+    color: #fff;
+  }
+  .tr-selected .badge-cat {
+    background: rgba(255, 255, 255, 0.2);
     color: #fff;
   }
 
