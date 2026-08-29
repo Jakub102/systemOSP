@@ -75,23 +75,23 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   verifyInvitation: (token: string) =>
-    request<Invitation>(`/v1/invitations/verify/${encodeURIComponent(token)}`),
+    request<Invitation>(`/invitations/verify/${encodeURIComponent(token)}`),
 
   register: (payload: RegisterPayload) =>
-    request<{ message: string }>('/v1/register', {
+    request<{ message: string }>('/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
 
   login: (email: string, password: string, deviceName: string) =>
-    request<LoginResponse>('/v1/login', {
+    request<LoginResponse>('/login', {
       method: 'POST',
       body: JSON.stringify({ email, password, device_name: deviceName }),
     }),
 
-  me: () => request<AuthUser>('/v1/me'),
+  me: () => request<AuthUser>('/me'),
 
-  logout: () => request<{ message: string }>('/v1/logout', { method: 'POST' }),
+  logout: () => request<{ message: string }>('/logout', { method: 'POST' }),
 };
 
 export function getStoredToken(): string | null {

@@ -10,8 +10,6 @@ use App\Http\Controllers\Api\Invitation\StoreController as StoreInvitationContro
 use App\Http\Controllers\Api\Invitation\VerifyController as VerifyInvitationController;
 use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitationController;
 
-Route::prefix('v1')->group(function(){
-
     Route::post('/login', LoginController::class)->middleware('throttle:5,1');
     Route::post('/register', RegisterController::class)->middleware('throttle:5,1');
     Route::get('/invitations/verify/{token}', VerifyInvitationController::class);
@@ -29,6 +27,5 @@ Route::prefix('v1')->group(function(){
     ])->group(function () {
         Route::post('/invitations', StoreInvitationController::class);
         Route::delete('/invitations/{invitation}', CancelInvitationController::class);
-    });
     });
 
