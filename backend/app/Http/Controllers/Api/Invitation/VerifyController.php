@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1\Invitation;
+namespace App\Http\Controllers\Api\Invitation;
 
 use Illuminate\Http\Request;
 use App\Models\Invitation;
