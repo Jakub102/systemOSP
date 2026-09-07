@@ -1,6 +1,9 @@
-﻿.claude/
-.expo/
+﻿.expo/
 .idea/
 .vscode/
 node_modules/
 .env
+
+# Firebase config - zawiera klucz API, nie commitujemy
+google-services.json
+GoogleService-Info.plist
