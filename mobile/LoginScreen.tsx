@@ -9,83 +9,63 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Linking,
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+import { IS_MOCK_API, login } from "./AlarmService";
 import { C } from "./constants/theme";
 import { StackScreenProps } from "@react-navigation/stack";
 import { RootStackParamList } from "./types";
 
 type Props = StackScreenProps<RootStackParamList, "Login">;
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "";
+//Tryb demo logowania
 
-// --- Tryb demo logowania ---
-// Aktywny tylko dopóki backend nie istnieje (brak adresu lub placeholder w .env).
-// Gdy ustawisz prawdziwy EXPO_PUBLIC_API_URL, logowanie automatycznie pójdzie przez API.
-const MOCK_LOGIN = !API_BASE || API_BASE.includes("your-osp-backend");
-const MOCK_USER = "jan";
-const MOCK_PASS = "crmm";
+const MOCK_EMAIL = "strazak@vfd.pl";
+const MOCK_PASS = "password123";
 
 export default function LoginScreen({ navigation }: Props) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [permissionsDenied, setPermissionsDenied] = useState(false);
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      setError("Podaj login i hasło.");
+    if (!email.trim() || !password.trim()) {
+      setError("Podaj adres e-mail i hasło.");
       return;
     }
     setLoading(true);
     setError(null);
-    setPermissionsDenied(false);
 
-    // Tryb demo: testuje samo okno logowania bez backendu (login: jan / hasło: crmm)
-    if (MOCK_LOGIN) {
+    
+    if (IS_MOCK_API) {
       await new Promise((r) => setTimeout(r, 400)); // symulacja opóźnienia sieci
-      if (username.trim() === MOCK_USER && password === MOCK_PASS) {
-        await AsyncStorage.setItem("authToken", "dev-mock-token");
-        await AsyncStorage.setItem("userName", username.trim());
-        setLoading(false);
+      if (email.trim().toLowerCase() === MOCK_EMAIL && password === MOCK_PASS) {
+        await AsyncStorage.multiSet([
+          ["authToken", "dev-mock-token"],
+          ["userName", "Jan Kowalski"],
+        ]);
         navigation.replace("Home");
       } else {
-        setError("Nieprawidłowy login lub hasło.");
-        setLoading(false);
+        setError("Nieprawidłowy e-mail lub hasło.");
       }
+      setLoading(false);
       return;
     }
 
     try {
-      const res = await axios.post(`${API_BASE}/auth/login`, {
-        username: username.trim(),
-        password,
-      });
-      const token: string | undefined = res.data?.token;
-      if (!token) throw new Error("Brak tokenu w odpowiedzi serwera");
-      await AsyncStorage.setItem("authToken", token);
-      await AsyncStorage.setItem("userName", username.trim());
+     
+      await login(email, password);
       navigation.replace("Home");
     } catch (e: unknown) {
-      if (axios.isAxiosError(e)) {
-        if (e.response?.status === 401) {
-          setError("Nieprawidłowy login lub hasło.");
-        } else if (!e.response) {
-          setError("Brak połączenia z serwerem.");
-        } else {
-          setError(
-            (e.response.data as { message?: string })?.message ??
-              `Błąd serwera (${e.response.status})`,
-          );
-        }
-      } else {
-        setError(e instanceof Error ? e.message : "Nieznany błąd.");
-      }
+     
+      
+      const message = (e as { customMessage?: string })?.customMessage;
+      setError(
+        message ?? (e instanceof Error ? e.message : "Nie udało się zalogować."),
+      );
     } finally {
       setLoading(false);
     }
@@ -105,14 +85,16 @@ export default function LoginScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.fieldLabel}>LOGIN</Text>
+            <Text style={styles.fieldLabel}>ADRES E-MAIL</Text>
             <TextInput
               style={styles.input}
-              value={username}
-              onChangeText={setUsername}
+              value={email}
+              onChangeText={setEmail}
               autoCapitalize="none"
               autoCorrect={false}
-              placeholder="Wprowadź login"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              placeholder="Wprowadź adres e-mail"
               placeholderTextColor={C.textDim}
               returnKeyType="next"
             />
@@ -132,18 +114,6 @@ export default function LoginScreen({ navigation }: Props) {
             {error ? (
               <View style={styles.errorBanner}>
                 <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            {permissionsDenied ? (
-              <View style={styles.warningBanner}>
-                <Text style={styles.warningText}>
-                  Uprawnienia do powiadomień zostały odrzucone. Alarmy nie będą
-                  docierać na to urządzenie.
-                </Text>
-                <TouchableOpacity onPress={() => Linking.openSettings()}>
-                  <Text style={styles.warningLink}>Otwórz ustawienia systemowe</Text>
-                </TouchableOpacity>
               </View>
             ) : null}
 
@@ -227,20 +197,6 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   errorText: { color: C.red, fontSize: 13, fontWeight: "700" },
-  warningBanner: {
-    marginTop: 16,
-    backgroundColor: "#FFF8E1",
-    borderRadius: 0,
-    padding: 14,
-  },
-  warningText: { color: C.textLight, fontSize: 13, fontWeight: "500" },
-  warningLink: {
-    color: C.red,
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 8,
-    textDecorationLine: "underline",
-  },
   btn: {
     marginTop: 28,
     backgroundColor: C.red,

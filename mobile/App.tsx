@@ -27,8 +27,7 @@ import { AlarmData, RootStackParamList } from "./types";
 
 const isNativePushAvailable = !!NativeModules.RNPushNotification;
 
-// Dane alarmu wracają z powiadomienia raz jako `data`, raz jako `userInfo`
-// - zależnie od tego, czy to tapnięcie w treść, czy w przycisk akcji.
+
 type PushNotificationEvent = {
   data?: Record<string, unknown>;
   userInfo?: Record<string, unknown>;
@@ -54,8 +53,7 @@ if (isNativePushAvailable) {
   } catch {}
 }
 
-// Poza cyklem życia komponentu - handler musi być zarejestrowany, zanim
-// system odpali apkę w tle na wiadomość FCM.
+
 registerBackgroundHandler();
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -66,14 +64,13 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false);
   const [initialRoute, setInitialRoute] = useState<"Login" | "Home" | null>(null);
 
-  // Sprawdź token i ustal punkt startowy nawigacji
+
   useEffect(() => {
     AsyncStorage.getItem("authToken")
       .then((token) => setInitialRoute(token ? "Home" : "Login"))
       .catch(() => setInitialRoute("Login"));
   }, []);
 
-  // Przekieruj do Login po wygaśnięciu sesji (401)
   useEffect(() => {
     setUnauthorizedHandler(() => {
       if (navigationRef.isReady()) {
@@ -89,8 +86,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Nawigacja może jeszcze nie być gotowa (alarm z ubitej apki) - wtedy alarm
-  // czeka w stanie i odpala się w onReady.
+
   const openAlarm = useCallback((alarmData: AlarmData) => {
     if (navigationRef.isReady()) {
       navigationRef.navigate("AlarmScreen", { alarmData });
@@ -107,13 +103,11 @@ export default function App() {
     if (isNativePushAvailable && PushNotification) {
       try {
         PushNotification.configure({
-          // Tapnięcie w treść powiadomienia - pełny ekran alarmu
           onNotification: (notification) => {
             const alarmData = alarmFromEvent(notification);
             if (notification.userInteraction && alarmData) openAlarm(alarmData);
             notification.finish?.("UIBackgroundFetchResultNoData"); // wymagane na iOS
           },
-          // Szybka odpowiedź z przycisku w powiadomieniu
           onAction: (notification) => {
             const alarmData = alarmFromEvent(notification);
             if (!alarmData) return;
@@ -141,7 +135,6 @@ export default function App() {
     const setupFCM = async () => {
       unsubscribeFCM = await initFCM(openAlarm);
     };
-    // Bez google-services.json Firebase nie wstanie - to nie może wywalić apki
     setupFCM().catch((e) => console.warn("Inicjalizacja FCM nieudana:", e));
 
     return () => unsubscribeFCM?.();
@@ -160,7 +153,7 @@ export default function App() {
     <>
       {isOffline && (
         <View style={offlineStyles.banner}>
-          <Text style={offlineStyles.text}>⚠ Brak połączenia z serwerem</Text>
+          <Text style={offlineStyles.text}>Brak połączenia z serwerem</Text>
         </View>
       )}
       <NavigationContainer ref={navigationRef} onReady={handleNavReady}>

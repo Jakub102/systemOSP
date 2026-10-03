@@ -3,7 +3,13 @@ import type { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { subHours, subDays } from 'date-fns';
-import type { AlarmData, AlarmHistoryResponse } from './types';
+import type {
+  AlarmData,
+  AlarmHistoryResponse,
+  LoginResponse,
+  MeResponse,
+  UserProfile,
+} from './types';
 
 const isNative = !!NativeModules.RNPushNotification || !!NativeModules.RNFBAppModule;
 
@@ -15,12 +21,8 @@ type PushNotificationModule = {
   cancelLocalNotification: (id: string) => void;
 };
 
-// Ustawienia kanału (dźwięk, ważność) są w Androidzie niezmienne po jego
-// utworzeniu - każda zmiana dźwięku wymaga NOWEGO channelId, inaczej na już
-// zainstalowanych telefonach nic się nie zmieni. Stare kanały kasujemy niżej.
 export const ALARM_CHANNEL_ID = 'osp-alarm-v2';
 const LEGACY_CHANNEL_IDS = ['osp-alarm'];
-// Plik z android/app/src/main/res/raw (kopiowany przez plugins/withAlarmSound.js)
 const ALARM_SOUND = 'syrena.wav';
 
 let messagingFn: MessagingFn | null = null;
@@ -36,12 +38,14 @@ if (isNative) {
 }
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? '';
+
+export const IS_MOCK_API = !API_BASE || API_BASE.includes('your-osp-backend');
+
 const api = axios.create({
   baseURL: API_BASE,
   timeout: 8000,
 });
 
-// Callback rejestrowany przez App.tsx, wywoływany przy odpowiedzi 401
 let onUnauthorizedCallback: (() => void) | null = null;
 export const setUnauthorizedHandler = (handler: () => void) => {
   onUnauthorizedCallback = handler;
@@ -102,10 +106,6 @@ const toNumberOrNull = (value: unknown): number | null => {
 const toStringOr = (value: unknown, fallback: string): string =>
   typeof value === 'string' && value ? value : fallback;
 
-/**
- * Wspólny parser payloadu: FCM (onMessage / tło) i userInfo z powiadomienia
- * przekazują wszystko jako stringi.
- */
 export const parseAlarmData = (
   payload: Record<string, unknown> | null | undefined,
 ): AlarmData | null => {
@@ -126,8 +126,7 @@ export const parseAlarmData = (
   };
 };
 
-// Powrót do płaskich stringów - tylko takie userInfo przeżywa drogę
-// przez powiadomienie systemowe.
+
 const alarmToPayload = (alarm: AlarmData): Record<string, string> => ({
   alarmId: alarm.alarmId,
   incidentType: alarm.incidentType,
@@ -139,8 +138,6 @@ const alarmToPayload = (alarm: AlarmData): Record<string, string> => ({
   responseDeadlineMinutes: String(alarm.responseDeadlineMinutes ?? 3),
 });
 
-// Stabilne, dodatnie id powiadomienia dla danego alarmu - żeby dało się
-// je potem skasować i żeby ten sam alarm nie zdublował się w belce.
 const notificationIdFor = (alarmId: string): string => {
   let hash = 0;
   for (let i = 0; i < alarmId.length; i++) {
@@ -164,7 +161,7 @@ export const showAlarmNotification = (alarm: AlarmData) => {
     vibration: 1000,
     autoCancel: true,
     actions: ['JADĘ', 'NIE JADĘ'],
-    invokeApp: true, // akcja podnosi apkę - pewniejsze niż headless JS
+    invokeApp: true,
     userInfo: alarmToPayload(alarm),
   });
 };
@@ -175,12 +172,6 @@ export const cancelAlarmNotification = (alarmId: string) => {
 
 let backgroundHandlerRegistered = false;
 
-/**
- * Powiadomienia, gdy apka jest w tle lub ubita. Wymaga wiadomości FCM
- * wyłącznie z polem `data` - przy payloadzie `notification` Android wyświetli
- * powiadomienie sam i ten handler się nie odpali.
- * Musi być wywołane poza cyklem życia komponentów (patrz App.tsx).
- */
 export const registerBackgroundHandler = () => {
   if (!messagingFn || backgroundHandlerRegistered) return;
 
@@ -189,14 +180,12 @@ export const registerBackgroundHandler = () => {
       const alarm = parseAlarmData(remoteMessage.data);
       if (!alarm) return;
 
-      // Apka mogła nie wystartować od ostatniej instalacji - kanał musi istnieć
       setupNotificationChannels();
       showAlarmNotification(alarm);
     });
     backgroundHandlerRegistered = true;
   } catch (e) {
-    // Bez google-services.json messaging() rzuca od razu. To leci na poziomie
-    // modułu, więc bez tego łapania cała apka wywala się na starcie.
+   
     console.warn('Nie udało się zarejestrować handlera tła:', e);
   }
 };
@@ -248,8 +237,6 @@ export const initFCM = async (
     await registerDeviceToken(newToken);
   });
 
-  // Apka na wierzchu: bez powiadomienia w belce - od razu pełny ekran alarmu
-  // z syreną (useAlarmSound), inaczej dźwięk grałby podwójnie.
   const unsubscribeMessage = messagingFn().onMessage(async (remoteMessage) => {
     const alarm = parseAlarmData(remoteMessage.data);
     if (alarm) onAlarmReceived(alarm);
@@ -265,14 +252,12 @@ export const sendAlarmResponse = async (
   alarmId: string,
   status: string,
 ): Promise<{ success: boolean }> => {
-  // tymczasowo: endpoint /alarms/{id}/respond nie jest jeszcze podłączony
   await new Promise((resolve) => setTimeout(resolve, 400));
   console.log(`Odpowiedź na alarm ${alarmId}: ${status}`);
   return { success: true };
 };
 
 export const fetchAlarmHistory = async (page = 1): Promise<AlarmHistoryResponse> => {
-  // dane przykładowe, dopóki nie ma GET /alarms/history
   void page;
   await new Promise((resolve) => setTimeout(resolve, 300));
   const now = new Date();
@@ -303,6 +288,63 @@ export const fetchAlarmHistory = async (page = 1): Promise<AlarmHistoryResponse>
   };
 };
 
+export const getDeviceName = async (): Promise<string> => {
+  const stored = await AsyncStorage.getItem('deviceName');
+  if (stored) return stored;
+
+  const generated = `${Platform.OS}-${Math.random().toString(36).slice(2, 10)}`;
+  await AsyncStorage.setItem('deviceName', generated);
+  return generated;
+};
+
+const persistProfile = async (user?: UserProfile | null): Promise<void> => {
+  if (!user) return;
+
+  const entries: [string, string][] = [];
+
+  const fullName = user.full_name?.trim();
+  if (fullName) entries.push(['userName', fullName]);
+
+  const lat = toNumberOrNull(user.firehouse?.latitude);
+  const lng = toNumberOrNull(user.firehouse?.longitude);
+  if (lat !== null && lng !== null) {
+    entries.push(['stationLat', String(lat)], ['stationLng', String(lng)]);
+  }
+
+  if (entries.length) await AsyncStorage.multiSet(entries);
+};
+
+export const login = async (email: string, password: string): Promise<UserProfile> => {
+  const deviceName = await getDeviceName();
+
+  const { data } = await api.post<LoginResponse>('/login', {
+    email: email.trim(),
+    password,
+    device_name: deviceName,
+  });
+
+  if (!data?.token) throw new Error('Serwer nie zwrocil tokenu logowania');
+
+  await AsyncStorage.setItem('authToken', data.token);
+  await persistProfile(data.user);
+
+  return data.user;
+};
+
+export const fetchMe = async (): Promise<UserProfile | null> => {
+  const { data } = await api.get<MeResponse>('/me');
+  await persistProfile(data?.user);
+  return data?.user ?? null;
+};
+
+export const getStationCoords = async (): Promise<{ lat: number; lng: number } | null> => {
+  const stored = await AsyncStorage.multiGet(['stationLat', 'stationLng']);
+  const lat = toNumberOrNull(stored[0]?.[1]);
+  const lng = toNumberOrNull(stored[1]?.[1]);
+
+  return lat !== null && lng !== null ? { lat, lng } : null;
+};
+
 export const registerDeviceToken = async (token: string): Promise<void> => {
   try {
     await api.post('/devices/register', { token, platform: Platform.OS });
@@ -315,11 +357,14 @@ export const registerDeviceToken = async (token: string): Promise<void> => {
 export const logout = async (): Promise<void> => {
   try {
     const token = await AsyncStorage.getItem('authToken');
-    if (token && messagingFn) {
-      const fcmToken = await messagingFn().getToken();
-      await api.post('/devices/unregister', { token: fcmToken }).catch(() => {});
-    }
+    if (token) await api.post('/logout').catch(() => {});
   } finally {
-    await AsyncStorage.multiRemove(['authToken', 'userName', 'available']);
+    await AsyncStorage.multiRemove([
+      'authToken',
+      'userName',
+      'available',
+      'stationLat',
+      'stationLng',
+    ]);
   }
 };

@@ -12,13 +12,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { C } from "./constants/theme";
-import { logout } from "./AlarmService";
+import { fetchMe, logout } from "./AlarmService";
 import { StackScreenProps } from "@react-navigation/stack";
 import { RootStackParamList } from "./types";
 
 type Props = StackScreenProps<RootStackParamList, "Home">;
 
-// Przełącznik on/off w stylu ustawień (kanciasty, dopasowany do reszty UI)
+
 function Toggle({
   value,
   onChange,
@@ -59,6 +59,13 @@ export default function HomeScreen({ navigation }: Props) {
     AsyncStorage.getItem("available")
       .then((val) => {
         if (val !== null) setAvailable(val === "true");
+      })
+      .catch(() => {});
+
+    
+    fetchMe()
+      .then((user) => {
+        if (user?.full_name) setUserName(user.full_name.toUpperCase());
       })
       .catch(() => {});
   }, []);

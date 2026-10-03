@@ -1,0 +1,27 @@
+{
+	"folders": [
+		{
+			"name": "OSPmobilka",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"editor.codeActionsOnSave": {
+			"source.fixAll": "explicit",
+			"source.organizeImports": "explicit",
+			"source.sortMembers": "explicit"
+		},
+		"chat.tools.terminal.autoApprove": {
+			"Group-Object": true,
+			"ForEach-Object": true,
+			"/^powershell -c \"Get-ChildItem -Recurse -File \\| Where-Object \\{ \\$_\\.FullName -notmatch '\\\\\\\\\\(node_modules\\|\\\\\\.git\\|\\\\\\.expo\\|build\\|android\\|ios\\)\\\\\\\\' \\} \\| Group-Object Extension \\| ForEach-Object \\{ \\$lines = 0; \\$_\\.Group \\| ForEach-Object \\{ \\$content = Get-Content \\$_\\.FullName -ErrorAction SilentlyContinue; if \\(\\$content\\) \\{ \\$lines \\+= \\$content\\.Count \\} \\}; \\[pscustomobject\\]@\\{ Ext = \\$_\\.Name; Lines = \\$lines \\} \\} \\| Sort-Object Lines -Descending\"$/": {
+				"approve": true,
+				"matchCommandLine": true
+			},
+			"/^node countLines\\.js$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
+	}
+}

@@ -4,15 +4,7 @@ const path = require("path");
 
 const SOUND_FILE = "syrena.wav";
 
-/**
- * Kopiuje dźwięk alarmu do android/app/src/main/res/raw przy prebuildzie.
- * Bez tego kanał powiadomień nie ma czego zagrać, a folder android/ jest
- * generowany (gitignore), więc ręcznie wrzucony plik zniknąłby przy
- * `expo prebuild --clean`.
- *
- * Nazwa pliku musi być w formacie zasobu Androida: małe litery, cyfry
- * i podkreślenia - bez myślników i spacji.
- */
+
 module.exports = function withAlarmSound(config) {
   return withDangerousMod(config, [
     "android",

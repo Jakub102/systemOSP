@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ALARM_STATUS } from "./useAlarm";
+import { getStationCoords } from "./AlarmService";
 import { C } from "./constants/theme";
 import { StackScreenProps } from "@react-navigation/stack";
 import { RootStackParamList } from "./types";
@@ -21,10 +22,31 @@ export default function AlarmConfirmScreen({ route, navigation }: Props) {
   const isGoing = status === ALARM_STATUS.GOING;
   const accent = isGoing ? C.green : C.red;
 
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    alarmData?.stationLat && alarmData?.stationLng
+      ? { lat: alarmData.stationLat, lng: alarmData.stationLng }
+      : null,
+  );
+
+  useEffect(() => {
+    if (coords) return;
+
+    let active = true;
+    getStationCoords()
+      .then((stored) => {
+        if (active && stored) setCoords(stored);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [coords]);
+
   const openGoogleMaps = () => {
-    const lat = alarmData?.stationLat;
-    const lng = alarmData?.stationLng;
-    if (!lat || !lng) return;
+    if (!coords) return;
+
+    const { lat, lng } = coords;
     Linking.openURL(`google.navigation:q=${lat},${lng}&mode=d`).catch(() =>
       Linking.openURL(
         `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
@@ -32,7 +54,7 @@ export default function AlarmConfirmScreen({ route, navigation }: Props) {
     );
   };
 
-  const hasCoords = !!(alarmData?.stationLat && alarmData?.stationLng);
+  const hasCoords = !!coords;
 
   return (
     <View style={[styles.root, { backgroundColor: accent }]}>

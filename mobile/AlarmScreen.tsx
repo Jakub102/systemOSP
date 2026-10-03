@@ -35,23 +35,19 @@ export default function AlarmScreen({ route, navigation }: Props) {
     },
   );
 
-  // Syrena leci w pętli, dopóki strażak nie odpowie
   useAlarmSound(!!alarmData && status === ALARM_STATUS.PENDING);
 
-  // Blokada przycisku Wstecz podczas trwania alarmu
   useEffect(() => {
     const handler = BackHandler.addEventListener("hardwareBackPress", () => true);
     return () => handler.remove();
   }, []);
 
-  // Wibracja w pętli - zabezpieczenie na wyciszone multimedia
   useEffect(() => {
     if (status !== ALARM_STATUS.PENDING) return;
     Vibration.vibrate(VIBRATION_PATTERN, true);
     return () => Vibration.cancel();
   }, [status]);
 
-  // Puls zegara: delikatny co sekundę, mocniejszy co 10 sekund
   useEffect(() => {
     if (elapsed === 0) return;
     const strong = elapsed % 10 === 0;
