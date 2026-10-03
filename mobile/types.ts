@@ -31,3 +31,33 @@ export type RootStackParamList = {
   };
   History: undefined;
 };
+
+export interface Firehouse {
+  id: number;
+  name: string;
+  street?: string | null;
+  address?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  latitude: number;
+  longitude: number;
+}
+
+export interface UserProfile {
+  id: number;
+  first_name: string;
+  last_name: string;
+  phone_number?: string | null;
+  firehouse?: Firehouse | null;
+  roles: string[];
+  full_name: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: UserProfile;
+}
+
+export interface MeResponse {
+  user: UserProfile;
+}
