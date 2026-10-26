@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Auth\UserController;
 use App\Http\Controllers\Api\Invitation\StoreController as StoreInvitationController;
 use App\Http\Controllers\Api\Invitation\VerifyController as VerifyInvitationController;
 use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitationController;
+use App\Http\Controllers\Api\Incident\AlarmController;
 
     Route::post('/login', LoginController::class)->middleware('throttle:5,1');
     Route::post('/register', RegisterController::class)->middleware('throttle:5,1');
@@ -35,7 +36,5 @@ use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitati
         'role:system'
     ])->group(function () {
         Route::post('/incident/new', AlarmController::class);
-    });
-
     });
 
