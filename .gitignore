@@ -1,13 +1,10 @@
-.DS_Store
-Thumbs.db
-
+﻿.expo/
+.idea/
+.vscode/
+node_modules/
 .env
+/mobile/todo.md
 
-/backend/.env
-/backend/vendor/
-/backend/bootstrap/cache/*
-/backend/storage/*.key
-
-/frontend/node_modules/
-/frontend/dist/
-/frontend/.env
+# Firebase config - zawiera klucz API, nie commitujemy
+google-services.json
+GoogleService-Info.plist
