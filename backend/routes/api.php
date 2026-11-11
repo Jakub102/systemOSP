@@ -29,3 +29,13 @@ use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitati
         Route::delete('/invitations/{invitation}', CancelInvitationController::class);
     });
 
+    Route::middleware([
+        'auth:sanctum', 
+        'throttle:5,1', 
+        'role:system'
+    ])->group(function () {
+        Route::post('/incident/new', AlarmController::class);
+    });
+
+    });
+
