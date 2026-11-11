@@ -1,0 +1,6 @@
+# to samo co w .gitignore, ale google-services.json MUSI isc na serwer EAS
+node_modules/
+.expo/
+android/
+ios/
+.env

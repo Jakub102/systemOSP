@@ -9,7 +9,7 @@ import type {
   LoginResponse,
   MeResponse,
   UserProfile,
-} from './types';
+} from '../types';
 
 const isNative = !!NativeModules.RNPushNotification || !!NativeModules.RNFBAppModule;
 
@@ -21,9 +21,10 @@ type PushNotificationModule = {
   cancelLocalNotification: (id: string) => void;
 };
 
-export const ALARM_CHANNEL_ID = 'osp-alarm-v2';
-const LEGACY_CHANNEL_IDS = ['osp-alarm'];
+export const ALARM_CHANNEL_ID = 'osp-alarm-v3';
+const LEGACY_CHANNEL_IDS = ['osp-alarm', 'osp-alarm-v2'];
 const ALARM_SOUND = 'syrena.wav';
+const ALARM_TOPIC = 'system-alert';
 
 let messagingFn: MessagingFn | null = null;
 let PushNotification: PushNotificationModule | null = null;
@@ -109,17 +110,25 @@ const toStringOr = (value: unknown, fallback: string): string =>
 export const parseAlarmData = (
   payload: Record<string, unknown> | null | undefined,
 ): AlarmData | null => {
-  const alarmId = payload?.alarmId;
+  // backend (FcmService) wysyla incident_id, category_name itd. a nie alarmId
+  const alarmId = payload?.alarmId ?? payload?.incident_id;
   if (typeof alarmId !== 'string' || !alarmId) return null;
 
   const deadline = toNumberOrNull(payload?.responseDeadlineMinutes);
 
+  let incidentType = toStringOr(payload?.incidentType, '');
+  if (!incidentType) {
+    const category = toStringOr(payload?.category_name, 'ALARM');
+    const sub = toStringOr(payload?.sub_category, '');
+    incidentType = sub ? `${category} - ${sub}` : category;
+  }
+
   return {
     alarmId,
-    incidentType: toStringOr(payload?.incidentType, 'ALARM'),
+    incidentType: incidentType.toUpperCase(),
     address: toStringOr(payload?.address, ''),
     priority: toStringOr(payload?.priority, ''),
-    notes: toStringOr(payload?.notes, ''),
+    notes: toStringOr(payload?.notes, toStringOr(payload?.description, '')),
     stationLat: toNumberOrNull(payload?.stationLat),
     stationLng: toNumberOrNull(payload?.stationLng),
     responseDeadlineMinutes: deadline ?? 3,
@@ -232,6 +241,13 @@ export const initFCM = async (
 
   const token = await messagingFn().getToken();
   await registerDeviceToken(token);
+
+  // backend wysyla alarmy na topic, wiec trzeba sie zapisac
+  try {
+    await messagingFn().subscribeToTopic(ALARM_TOPIC);
+  } catch (e) {
+    console.warn('Nie udalo sie zapisac na topic:', e);
+  }
 
   const unsubscribeTokenRefresh = messagingFn().onTokenRefresh(async (newToken) => {
     await registerDeviceToken(newToken);
@@ -358,6 +374,8 @@ export const logout = async (): Promise<void> => {
   try {
     const token = await AsyncStorage.getItem('authToken');
     if (token) await api.post('/logout').catch(() => {});
+    // po wylogowaniu telefon nie powinien dostawac alarmow
+    await messagingFn?.().unsubscribeFromTopic(ALARM_TOPIC).catch(() => {});
   } finally {
     await AsyncStorage.multiRemove([
       'authToken',

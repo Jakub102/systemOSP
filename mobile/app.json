@@ -13,7 +13,13 @@
     },
     "plugins": [
       "./plugins/withAlarmSound",
-      ["expo-av", { "microphonePermission": false }],
+      "./plugins/withPushReceivers",
+      [
+        "expo-av",
+        {
+          "microphonePermission": false
+        }
+      ],
       "@react-native-firebase/app"
     ],
     "android": {
@@ -26,7 +32,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#E63A2E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -35,6 +41,11 @@
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
+    },
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E63A2E"
     }
   }
 }

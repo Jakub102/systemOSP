@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import NetInfo from "@react-native-community/netinfo";
-import { C } from "./constants/theme";
+import { C } from "./src/constants/theme";
 import {
   NavigationContainer,
   createNavigationContainerRef,
@@ -17,13 +17,13 @@ import {
   registerBackgroundHandler,
   cancelAlarmNotification,
   parseAlarmData,
-} from "./AlarmService";
-import AlarmScreen from "./AlarmScreen";
-import AlarmConfirmScreen from "./AlarmConfirmScreen";
-import HistoryScreen from "./HistoryScreen";
-import HomeScreen from "./HomeScreen";
-import LoginScreen from "./LoginScreen";
-import { AlarmData, RootStackParamList } from "./types";
+} from "./src/services/AlarmService";
+import AlarmScreen from "./src/screens/AlarmScreen";
+import AlarmConfirmScreen from "./src/screens/AlarmConfirmScreen";
+import HistoryScreen from "./src/screens/HistoryScreen";
+import HomeScreen from "./src/screens/HomeScreen";
+import LoginScreen from "./src/screens/LoginScreen";
+import { AlarmData, RootStackParamList } from "./src/types";
 
 const isNativePushAvailable = !!NativeModules.RNPushNotification;
 
