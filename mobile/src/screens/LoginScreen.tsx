@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { IS_MOCK_API, login } from "../services/AlarmService";
-import { C } from "../constants/theme";
+import { Palette } from "../constants/theme";
+import { useTheme } from "../hooks/useTheme";
 import { StackScreenProps } from "@react-navigation/stack";
 import { RootStackParamList } from "../types";
 
@@ -26,6 +27,8 @@ const MOCK_EMAIL = "strazak@vfd.pl";
 const MOCK_PASS = "password123";
 
 export default function LoginScreen({ navigation }: Props) {
+  const c = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,7 +79,7 @@ export default function LoginScreen({ navigation }: Props) {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <StatusBar barStyle="light-content" backgroundColor={C.red} />
+      <StatusBar barStyle="light-content" backgroundColor={c.bg} />
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.hero}>
@@ -95,7 +98,7 @@ export default function LoginScreen({ navigation }: Props) {
               keyboardType="email-address"
               textContentType="emailAddress"
               placeholder="Wprowadź adres e-mail"
-              placeholderTextColor={C.textDim}
+              placeholderTextColor={c.textDim}
               returnKeyType="next"
             />
 
@@ -106,7 +109,7 @@ export default function LoginScreen({ navigation }: Props) {
               onChangeText={setPassword}
               secureTextEntry
               placeholder="Wprowadź hasło"
-              placeholderTextColor={C.textDim}
+              placeholderTextColor={c.textDim}
               returnKeyType="done"
               onSubmitEditing={handleLogin}
             />
@@ -124,7 +127,7 @@ export default function LoginScreen({ navigation }: Props) {
               activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color={C.white} />
+                <ActivityIndicator color={c.white} />
               ) : (
                 <Text style={styles.btnText}>ZALOGUJ SIĘ</Text>
               )}
@@ -144,19 +147,20 @@ const CARD_SHADOW = {
   shadowRadius: 12,
 };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   safe: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: "center", padding: 24 },
   hero: { alignItems: "center", marginBottom: 28 },
   heroLabel: {
-    color: C.whiteDim,
+    color: c.whiteDim,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 2,
   },
   heroTitle: {
-    color: C.white,
+    color: c.white,
     fontSize: 32,
     fontWeight: "900",
     letterSpacing: 1,
@@ -164,15 +168,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   card: {
-    backgroundColor: C.cardBg,
+    backgroundColor: c.cardBg,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     padding: 24,
     ...CARD_SHADOW,
   },
   fieldLabel: {
-    color: C.textDim,
+    color: c.textDim,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1.5,
@@ -180,35 +184,35 @@ const styles = StyleSheet.create({
   },
   fieldLabelSpaced: { marginTop: 18 },
   input: {
-    backgroundColor: "#F4F4F6",
+    backgroundColor: c.inputBg,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     paddingVertical: 16,
     paddingHorizontal: 18,
     fontSize: 16,
-    color: C.textLight,
+    color: c.textLight,
     fontWeight: "600",
   },
   errorBanner: {
     marginTop: 16,
-    backgroundColor: "#FFE5E5",
+    backgroundColor: c.errorBg,
     borderRadius: 0,
     padding: 14,
   },
-  errorText: { color: C.red, fontSize: 13, fontWeight: "700" },
+  errorText: { color: c.red, fontSize: 13, fontWeight: "700" },
   btn: {
     marginTop: 28,
-    backgroundColor: C.red,
+    backgroundColor: c.red,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     paddingVertical: 18,
     alignItems: "center",
   },
   btnDisabled: { opacity: 0.6 },
   btnText: {
-    color: C.white,
+    color: c.white,
     fontSize: 18,
     fontWeight: "900",
     letterSpacing: 0.5,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,16 +11,19 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ALARM_STATUS } from "../hooks/useAlarm";
 import { getStationCoords } from "../services/AlarmService";
-import { C } from "../constants/theme";
+import { Palette } from "../constants/theme";
+import { useTheme } from "../hooks/useTheme";
 import { StackScreenProps } from "@react-navigation/stack";
 import { RootStackParamList } from "../types";
 
 type Props = StackScreenProps<RootStackParamList, "AlarmConfirm">;
 
 export default function AlarmConfirmScreen({ route, navigation }: Props) {
+  const c = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const { alarmData, status } = route.params;
   const isGoing = status === ALARM_STATUS.GOING;
-  const accent = isGoing ? C.green : C.red;
+  const accent = isGoing ? c.green : c.red;
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     alarmData?.stationLat && alarmData?.stationLng
@@ -120,7 +123,8 @@ const CARD_SHADOW = {
   shadowRadius: 12,
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
   scroll: { padding: 24, flexGrow: 1 },
@@ -129,16 +133,16 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: C.white,
+    backgroundColor: c.cardBg,
     borderWidth: 5,
-    borderColor: C.sand,
+    borderColor: c.sand,
     alignItems: "center",
     justifyContent: "center",
     ...CARD_SHADOW,
   },
   circleMark: { fontSize: 64, fontWeight: "900", marginTop: -6 },
   heroTitle: {
-    color: C.white,
+    color: c.white,
     fontSize: 26,
     fontWeight: "900",
     letterSpacing: 0.5,
@@ -146,49 +150,49 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   heroSub: {
-    color: C.whiteDim,
+    color: c.whiteDim,
     fontSize: 14,
     fontWeight: "600",
     marginTop: 8,
     textAlign: "center",
   },
   card: {
-    backgroundColor: C.cardBg,
+    backgroundColor: c.cardBg,
     padding: 22,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     marginTop: 28,
     ...CARD_SHADOW,
   },
   label: {
-    color: C.textDim,
+    color: c.textDim,
     fontSize: 11,
     fontWeight: "800",
     marginBottom: 8,
     letterSpacing: 1.5,
   },
-  incidentType: { color: C.textLight, fontSize: 24, fontWeight: "900" },
-  address: { color: C.textDim, fontSize: 15, fontWeight: "700", marginTop: 6 },
+  incidentType: { color: c.textLight, fontSize: 24, fontWeight: "900" },
+  address: { color: c.textDim, fontSize: 15, fontWeight: "700", marginTop: 6 },
   navBtn: {
-    backgroundColor: C.white,
+    backgroundColor: c.cardBg,
     paddingVertical: 20,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 16,
     ...CARD_SHADOW,
   },
-  navBtnText: { color: C.green, fontSize: 15, fontWeight: "900", letterSpacing: 0.5 },
+  navBtnText: { color: c.green, fontSize: 15, fontWeight: "900", letterSpacing: 0.5 },
   backBtn: {
     paddingVertical: 18,
     alignItems: "center",
-    backgroundColor: C.white,
+    backgroundColor: c.cardBg,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     marginTop: 16,
   },
   backBtnText: { fontSize: 15, fontWeight: "900", letterSpacing: 0.5 },

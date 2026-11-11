@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { fetchAlarmHistory } from "../services/AlarmService";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { C } from "../constants/theme";
+import { Palette } from "../constants/theme";
+import { useTheme } from "../hooks/useTheme";
 import { AlarmHistoryItem as IAlarmHistoryItem, RootStackParamList } from "../types";
 import { StackScreenProps } from "@react-navigation/stack";
 
@@ -21,7 +22,19 @@ type Props = StackScreenProps<RootStackParamList, "History">;
 
 const PAGE_SIZE = 20;
 
-function HistoryCard({ item }: { item: IAlarmHistoryItem }) {
+// Style powstaja raz w ekranie i sa przekazywane w dol, zeby nie tworzyc ich
+// na nowo dla kazdego wiersza listy.
+type Styles = ReturnType<typeof makeStyles>;
+
+function HistoryCard({
+  item,
+  c,
+  styles,
+}: {
+  item: IAlarmHistoryItem;
+  c: Palette;
+  styles: Styles;
+}) {
   const isGoing = item.myStatus === "going";
   const date = item.createdAt
     ? format(new Date(item.createdAt), "d MMM yyyy, HH:mm", { locale: pl })
@@ -37,7 +50,7 @@ function HistoryCard({ item }: { item: IAlarmHistoryItem }) {
       <View style={styles.cardFooter}>
         <Text style={styles.itemDate}>{date}</Text>
         <View
-          style={[styles.pill, { backgroundColor: isGoing ? C.green : C.red }]}
+          style={[styles.pill, { backgroundColor: isGoing ? c.green : c.red }]}
         >
           <Text style={styles.pillText}>
             {isGoing ? "JECHAŁEM" : "NIE JECHAŁEM"}
@@ -49,6 +62,8 @@ function HistoryCard({ item }: { item: IAlarmHistoryItem }) {
 }
 
 export default function HistoryScreen(_: Props) {
+  const c = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [items, setItems] = useState<IAlarmHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,7 +124,7 @@ export default function HistoryScreen(_: Props) {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.red} />
+      <StatusBar barStyle="light-content" backgroundColor={c.bg} />
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <Text style={styles.headerLabel}>JEDNOSTKA OSP</Text>
@@ -117,17 +132,17 @@ export default function HistoryScreen(_: Props) {
         </View>
 
         {loading && !refreshing ? (
-          <ActivityIndicator style={styles.loader} color={C.white} size="large" />
+          <ActivityIndicator style={styles.loader} color={c.white} size="large" />
         ) : (
           <FlatList
             data={items}
             keyExtractor={(item) => item.alarmId}
-            renderItem={({ item }) => <HistoryCard item={item} />}
+            renderItem={({ item }) => <HistoryCard item={item} c={c} styles={styles} />}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor={C.white}
+                tintColor={c.white}
               />
             }
             onEndReached={handleLoadMore}
@@ -136,7 +151,7 @@ export default function HistoryScreen(_: Props) {
             ListEmptyComponent={renderEmpty}
             ListFooterComponent={
               loadingMore ? (
-                <ActivityIndicator color={C.white} style={styles.footerLoader} />
+                <ActivityIndicator color={c.white} style={styles.footerLoader} />
               ) : null
             }
           />
@@ -154,18 +169,19 @@ const CARD_SHADOW = {
   shadowRadius: 10,
 };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   safe: { flex: 1 },
   header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12 },
   headerLabel: {
-    color: C.whiteDim,
+    color: c.whiteDim,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1.5,
   },
   headerTitle: {
-    color: C.white,
+    color: c.white,
     fontSize: 28,
     fontWeight: "900",
     letterSpacing: 0.5,
@@ -174,43 +190,43 @@ const styles = StyleSheet.create({
   loader: { flex: 1, marginTop: 60 },
   listContent: { padding: 20, paddingBottom: 32 },
   card: {
-    backgroundColor: C.cardBg,
+    backgroundColor: c.cardBg,
     padding: 18,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     marginBottom: 14,
     ...CARD_SHADOW,
   },
   cardLabel: {
-    color: C.textDim,
+    color: c.textDim,
     fontSize: 10,
     fontWeight: "800",
     marginBottom: 6,
     letterSpacing: 1.2,
   },
-  itemType: { color: C.textLight, fontSize: 19, fontWeight: "900" },
-  itemAddr: { color: C.textDim, fontSize: 14, marginTop: 2, fontWeight: "600" },
+  itemType: { color: c.textLight, fontSize: 19, fontWeight: "900" },
+  itemAddr: { color: c.textDim, fontSize: 14, marginTop: 2, fontWeight: "600" },
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 14,
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: c.border,
     paddingTop: 12,
   },
-  itemDate: { color: C.textDim, fontSize: 12, fontWeight: "700" },
+  itemDate: { color: c.textDim, fontSize: 12, fontWeight: "700" },
   pill: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 0,
   },
-  pillText: { color: C.white, fontSize: 12, fontWeight: "900", letterSpacing: 0.5 },
+  pillText: { color: c.white, fontSize: 12, fontWeight: "900", letterSpacing: 0.5 },
   footerLoader: { marginVertical: 16 },
   emptyContainer: { alignItems: "center", marginTop: 60, padding: 20 },
   emptyError: {
-    color: C.white,
+    color: c.white,
     fontSize: 14,
     fontWeight: "700",
     textAlign: "center",
@@ -219,17 +235,17 @@ const styles = StyleSheet.create({
   empty: {
     textAlign: "center",
     marginTop: 60,
-    color: C.whiteDim,
+    color: c.whiteDim,
     fontWeight: "800",
     fontSize: 14,
   },
   retryBtn: {
-    backgroundColor: C.white,
+    backgroundColor: c.cardBg,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     paddingHorizontal: 24,
     paddingVertical: 14,
   },
-  retryText: { color: C.red, fontSize: 13, fontWeight: "900" },
+  retryText: { color: c.red, fontSize: 13, fontWeight: "900" },
 });

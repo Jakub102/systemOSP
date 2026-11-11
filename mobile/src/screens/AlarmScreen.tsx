@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAlarm, ALARM_STATUS } from "../hooks/useAlarm";
 import { useAlarmSound } from "../hooks/useAlarmSound";
-import { C } from "../constants/theme";
+import { Palette } from "../constants/theme";
+import { useTheme } from "../hooks/useTheme";
 import { StackScreenProps } from "@react-navigation/stack";
 import { RootStackParamList } from "../types";
 
@@ -23,6 +24,8 @@ const VIBRATION_PATTERN = [0, 800, 200, 800, 200, 1000];
 type Props = StackScreenProps<RootStackParamList, "AlarmScreen">;
 
 export default function AlarmScreen({ route, navigation }: Props) {
+  const c = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const alarmData = route.params?.alarmData;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -86,14 +89,14 @@ export default function AlarmScreen({ route, navigation }: Props) {
   if (isAnswered) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={C.white} />
+        <ActivityIndicator size="large" color={c.white} />
       </View>
     );
   }
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.red} />
+      <StatusBar barStyle="light-content" backgroundColor={c.bg} />
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.incidentType}>{alarmData.incidentType}</Text>
@@ -153,16 +156,17 @@ export default function AlarmScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   safe: { flex: 1 },
   center: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: c.bg,
     justifyContent: "center",
     alignItems: "center",
   },
-  errorText: { color: C.white, fontSize: 16, fontWeight: "700" },
+  errorText: { color: c.white, fontSize: 16, fontWeight: "700" },
 
   scrollContent: {
     paddingHorizontal: 24,
@@ -170,14 +174,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   incidentType: {
-    color: C.white,
+    color: c.white,
     fontSize: 34,
     fontWeight: "900",
     textAlign: "center",
     lineHeight: 40,
   },
   address: {
-    color: C.whiteDim,
+    color: c.whiteDim,
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
@@ -188,9 +192,9 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
     borderRadius: 105,
-    backgroundColor: C.white,
+    backgroundColor: c.cardBg,
     borderWidth: 10,
-    borderColor: C.redDark,
+    borderColor: c.redDark,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 32,
@@ -201,14 +205,14 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
   },
   circleTime: {
-    color: C.red,
+    color: c.red,
     fontSize: 58,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
   },
-  circleTimeOverdue: { color: C.textDim },
+  circleTimeOverdue: { color: c.textDim },
   circleSub: {
-    color: C.textDim,
+    color: c.textDim,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.5,
@@ -216,32 +220,32 @@ const styles = StyleSheet.create({
   },
 
   overdueBanner: {
-    backgroundColor: C.white,
+    backgroundColor: c.cardBg,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignSelf: "stretch",
     marginTop: 20,
   },
   overdueText: {
-    color: C.textLight,
+    color: c.textLight,
     fontSize: 14,
     fontWeight: "800",
     textAlign: "center",
   },
   notesCard: {
-    backgroundColor: C.cardBg,
+    backgroundColor: c.cardBg,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     padding: 22,
     alignSelf: "stretch",
     marginTop: 24,
   },
   notesText: {
-    color: C.textLight,
+    color: c.textLight,
     fontSize: 24,
     fontWeight: "800",
     lineHeight: 30,
@@ -249,13 +253,13 @@ const styles = StyleSheet.create({
   },
 
   errorBanner: {
-    backgroundColor: C.white,
+    backgroundColor: c.cardBg,
     borderRadius: 0,
     padding: 14,
     alignSelf: "stretch",
     marginTop: 16,
   },
-  errorBannerText: { color: C.red, fontSize: 13, fontWeight: "700" },
+  errorBannerText: { color: c.red, fontSize: 13, fontWeight: "700" },
 
   footer: {
     paddingHorizontal: 20,
@@ -268,8 +272,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 14,
     borderWidth: 6,
-    borderColor: C.sand,
-    backgroundColor: C.white,
+    borderColor: c.sand,
+    backgroundColor: c.cardBg,
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -277,10 +281,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   btnGoing: {},
-  btnGoingText: { color: C.green, fontSize: 34, fontWeight: "900", letterSpacing: 1 },
+  btnGoingText: { color: c.green, fontSize: 34, fontWeight: "900", letterSpacing: 1 },
   btnNotGoing: {},
   btnNotGoingText: {
-    color: C.red,
+    color: c.red,
     fontSize: 34,
     fontWeight: "900",
     letterSpacing: 1,
