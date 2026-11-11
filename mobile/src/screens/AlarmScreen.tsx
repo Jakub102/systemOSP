@@ -26,7 +26,17 @@ export default function AlarmScreen({ route, navigation }: Props) {
   const alarmData = route.params?.alarmData;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  const { status, elapsed, elapsedFormatted, isLoading, error, respond } = useAlarm(
+  const {
+    status,
+    elapsed,
+    displayTime,
+    displayLabel,
+    isOverdue,
+    isAnswered,
+    isLoading,
+    error,
+    respond,
+  } = useAlarm(
     alarmData,
     (newStatus) => {
       setTimeout(() => {
@@ -49,7 +59,7 @@ export default function AlarmScreen({ route, navigation }: Props) {
   }, [status]);
 
   useEffect(() => {
-    if (elapsed === 0) return;
+    if (elapsed === 0 || isOverdue) return;
     const strong = elapsed % 10 === 0;
     Animated.sequence([
       Animated.timing(pulseAnim, {
@@ -63,7 +73,7 @@ export default function AlarmScreen({ route, navigation }: Props) {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [elapsed]);
+  }, [elapsed, isOverdue]);
 
   if (!alarmData) {
     return (
@@ -73,7 +83,7 @@ export default function AlarmScreen({ route, navigation }: Props) {
     );
   }
 
-  if (status !== ALARM_STATUS.PENDING) {
+  if (isAnswered) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={C.white} />
@@ -92,9 +102,19 @@ export default function AlarmScreen({ route, navigation }: Props) {
           <Animated.View
             style={[styles.circle, { transform: [{ scale: pulseAnim }] }]}
           >
-            <Text style={styles.circleTime}>{elapsedFormatted}</Text>
-            <Text style={styles.circleSub}>czas od zgłoszenia</Text>
+            <Text style={[styles.circleTime, isOverdue && styles.circleTimeOverdue]}>
+              {displayTime}
+            </Text>
+            <Text style={styles.circleSub}>{displayLabel}</Text>
           </Animated.View>
+
+          {isOverdue ? (
+            <View style={styles.overdueBanner}>
+              <Text style={styles.overdueText}>
+                Minął czas na odpowiedź. Nadal możesz zadeklarować wyjazd.
+              </Text>
+            </View>
+          ) : null}
 
           {alarmData.notes ? (
             <View style={styles.notesCard}>
@@ -186,6 +206,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
   },
+  circleTimeOverdue: { color: C.textDim },
   circleSub: {
     color: C.textDim,
     fontSize: 12,
@@ -194,6 +215,22 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  overdueBanner: {
+    backgroundColor: C.white,
+    borderRadius: 0,
+    borderWidth: 4,
+    borderColor: C.sand,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignSelf: "stretch",
+    marginTop: 20,
+  },
+  overdueText: {
+    color: C.textLight,
+    fontSize: 14,
+    fontWeight: "800",
+    textAlign: "center",
+  },
   notesCard: {
     backgroundColor: C.cardBg,
     borderRadius: 0,

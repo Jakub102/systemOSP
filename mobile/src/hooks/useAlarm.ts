@@ -6,7 +6,14 @@ export const ALARM_STATUS = {
   PENDING: "pending",
   GOING: "going",
   NOT_GOING: "not_going",
+  NO_ANSWER: "no_answer",
 };
+
+// Gdy zgłoszenie nie niesie własnego limitu, przyjmujemy trzy minuty.
+const DEFAULT_DEADLINE_MINUTES = 3;
+
+const formatSeconds = (total: number): string =>
+  `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 
 export const useAlarm = (
   alarmData: AlarmData | null,
@@ -19,11 +26,26 @@ export const useAlarm = (
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Licznik czasu, który upłynął od zgłoszenia (liczy w górę, bez limitu)
-  useEffect(() => {
-    if (!alarmData || status !== ALARM_STATUS.PENDING) return;
+  const deadlineSeconds = Math.max(
+    0,
+    Math.round((alarmData?.responseDeadlineMinutes ?? DEFAULT_DEADLINE_MINUTES) * 60),
+  );
 
+  // Strażak odpowiedział - alarm jest zamknięty.
+  const isAnswered =
+    status === ALARM_STATUS.GOING || status === ALARM_STATUS.NOT_GOING;
+  // Limit minął, ale alarm nadal czeka na decyzję.
+  const isOverdue = status === ALARM_STATUS.NO_ANSWER;
+
+  // Licznik chodzi od pojawienia się alarmu aż do odpowiedzi. Celowo nie
+  // zeruje się po upływie limitu, bo zegar przechodzi wtedy z odliczania
+  // na pokazywanie czasu, który upłynął od zgłoszenia.
+  useEffect(() => {
+    if (!alarmData) return;
+
+    setStatus(ALARM_STATUS.PENDING);
     setElapsed(0);
+
     timerRef.current = setInterval(() => {
       setElapsed((prev) => prev + 1);
     }, 1000);
@@ -31,11 +53,27 @@ export const useAlarm = (
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [alarmData?.alarmId, status]);
+  }, [alarmData?.alarmId]);
+
+  // Upłynął czas na odpowiedź. Syrena i wibracja milkną (AlarmScreen wiąże je
+  // ze statusem PENDING), ale alarm zostaje otwarty, żeby strażak, który
+  // dotarł do telefonu później, nadal mógł zadeklarować wyjazd.
+  useEffect(() => {
+    if (status !== ALARM_STATUS.PENDING || deadlineSeconds === 0) return;
+    if (elapsed >= deadlineSeconds) setStatus(ALARM_STATUS.NO_ANSWER);
+  }, [elapsed, deadlineSeconds, status]);
+
+  // Po odpowiedzi licznik nie ma już czego mierzyć.
+  useEffect(() => {
+    if (isAnswered && timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, [isAnswered]);
 
   const respond = useCallback(
     async (decision: string) => {
-      if (status !== ALARM_STATUS.PENDING || isLoading || !alarmData) return;
+      if (isAnswered || isLoading || !alarmData) return;
 
       setIsLoading(true);
       setError(null);
@@ -59,17 +97,21 @@ export const useAlarm = (
         setIsLoading(false);
       }
     },
-    [alarmData, status, isLoading, onRespond],
+    [alarmData, isAnswered, isLoading, onRespond],
   );
 
-  const elapsedFormatted = `${Math.floor(elapsed / 60)}:${String(
-    elapsed % 60,
-  ).padStart(2, "0")}`;
+  const remaining = Math.max(0, deadlineSeconds - elapsed);
 
   return {
     status,
     elapsed,
-    elapsedFormatted,
+    remaining,
+    isAnswered,
+    isOverdue,
+    // Duży zegar: najpierw odliczanie do końca limitu, potem czas od zgłoszenia.
+    displayTime: isOverdue ? formatSeconds(elapsed) : formatSeconds(remaining),
+    displayLabel: isOverdue ? "czas od zgłoszenia" : "czas na odpowiedź",
+    elapsedFormatted: formatSeconds(elapsed),
     isLoading,
     error,
     respond,
