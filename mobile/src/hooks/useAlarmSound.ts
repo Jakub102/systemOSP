@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 
-const SIREN = require("./assets/sounds/syrena.wav");
+const SIREN = require("../../assets/sounds/syrena.wav");
 
 /**
  * Zapętlona syrena na czas trwania alarmu, gdy apka jest na wierzchu.

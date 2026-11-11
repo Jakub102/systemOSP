@@ -10,11 +10,11 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { fetchAlarmHistory } from "./AlarmService";
+import { fetchAlarmHistory } from "../services/AlarmService";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { C } from "./constants/theme";
-import { AlarmHistoryItem as IAlarmHistoryItem, RootStackParamList } from "./types";
+import { C } from "../constants/theme";
+import { AlarmHistoryItem as IAlarmHistoryItem, RootStackParamList } from "../types";
 import { StackScreenProps } from "@react-navigation/stack";
 
 type Props = StackScreenProps<RootStackParamList, "History">;

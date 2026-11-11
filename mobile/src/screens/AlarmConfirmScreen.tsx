@@ -9,11 +9,11 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ALARM_STATUS } from "./useAlarm";
-import { getStationCoords } from "./AlarmService";
-import { C } from "./constants/theme";
+import { ALARM_STATUS } from "../hooks/useAlarm";
+import { getStationCoords } from "../services/AlarmService";
+import { C } from "../constants/theme";
 import { StackScreenProps } from "@react-navigation/stack";
-import { RootStackParamList } from "./types";
+import { RootStackParamList } from "../types";
 
 type Props = StackScreenProps<RootStackParamList, "AlarmConfirm">;
 

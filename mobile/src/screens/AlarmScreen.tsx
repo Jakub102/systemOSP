@@ -12,11 +12,11 @@ import {
   BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAlarm, ALARM_STATUS } from "./useAlarm";
-import { useAlarmSound } from "./useAlarmSound";
-import { C } from "./constants/theme";
+import { useAlarm, ALARM_STATUS } from "../hooks/useAlarm";
+import { useAlarmSound } from "../hooks/useAlarmSound";
+import { C } from "../constants/theme";
 import { StackScreenProps } from "@react-navigation/stack";
-import { RootStackParamList } from "./types";
+import { RootStackParamList } from "../types";
 
 const VIBRATION_PATTERN = [0, 800, 200, 800, 200, 1000];
 

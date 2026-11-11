@@ -13,10 +13,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { IS_MOCK_API, login } from "./AlarmService";
-import { C } from "./constants/theme";
+import { IS_MOCK_API, login } from "../services/AlarmService";
+import { C } from "../constants/theme";
 import { StackScreenProps } from "@react-navigation/stack";
-import { RootStackParamList } from "./types";
+import { RootStackParamList } from "../types";
 
 type Props = StackScreenProps<RootStackParamList, "Login">;
 

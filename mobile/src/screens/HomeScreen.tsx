@@ -11,10 +11,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { C } from "./constants/theme";
-import { fetchMe, logout } from "./AlarmService";
+import { C } from "../constants/theme";
+import { fetchMe, logout } from "../services/AlarmService";
 import { StackScreenProps } from "@react-navigation/stack";
-import { RootStackParamList } from "./types";
+import { RootStackParamList } from "../types";
 
 type Props = StackScreenProps<RootStackParamList, "Home">;
 
@@ -48,7 +48,7 @@ function Toggle({
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const [userName, setUserName] = useState("STRAŻAK");
+  const [userName, setUserName] = useState("");
   const [available, setAvailable] = useState(true);
 
   useEffect(() => {
@@ -110,7 +110,7 @@ export default function HomeScreen({ navigation }: Props) {
 
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.header}>
-          <Text style={styles.userName}>{userName}</Text>
+          <Text style={styles.userName}>{userName || "STRAŻAK"}</Text>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
             <Text style={styles.logoutText}>WYLOGUJ</Text>
           </TouchableOpacity>
@@ -155,7 +155,7 @@ export default function HomeScreen({ navigation }: Props) {
 
           <View style={styles.brand}>
             <Image
-              source={require("./assets/images/android-icon-foreground.png")}
+              source={require("../../assets/images/android-icon-foreground.png")}
               style={styles.brandImg}
               resizeMode="contain"
             />

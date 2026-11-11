@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { sendAlarmResponse, cancelAlarmNotification } from "./AlarmService";
-import { AlarmData } from "./types";
+import { sendAlarmResponse, cancelAlarmNotification } from "../services/AlarmService";
+import { AlarmData } from "../types";
 
 export const ALARM_STATUS = {
   PENDING: "pending",
