@@ -22,7 +22,7 @@ Apka na wierzchu: `onMessage` wchodzi prosto na `AlarmScreen`, a `useAlarmSound`
 żeby dźwięk nie grał podwójnie.
 
 Apka w tle / ubita: `setBackgroundMessageHandler` wystawia lokalne powiadomienie na kanale
-`osp-alarm-v2` (importance MAX, `soundName: syrena.wav`, akcje JADĘ / NIE JADĘ).
+`osp-alarm-v3` (importance MAX, `soundName: syrena.wav`, akcje JADĘ / NIE JADĘ).
 
 Wymagania po stronie serwera: wiadomości FCM **wyłącznie z polem `data`**. Jeśli payload
 zawiera `notification`, Android sam wyświetli powiadomienie i handler tła się nie odpali.

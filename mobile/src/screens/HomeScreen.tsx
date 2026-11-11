@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,20 +11,27 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { C } from "../constants/theme";
+import { Palette } from "../constants/theme";
+import { useTheme } from "../hooks/useTheme";
 import { fetchMe, logout } from "../services/AlarmService";
 import { StackScreenProps } from "@react-navigation/stack";
 import { RootStackParamList } from "../types";
 
 type Props = StackScreenProps<RootStackParamList, "Home">;
 
+type Styles = ReturnType<typeof makeStyles>;
+
 
 function Toggle({
   value,
   onChange,
+  c,
+  styles,
 }: {
   value: boolean;
   onChange: (v: boolean) => void;
+  c: Palette;
+  styles: Styles;
 }) {
   const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
 
@@ -40,7 +47,7 @@ function Toggle({
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={() => onChange(!value)}>
-      <View style={[styles.track, { backgroundColor: value ? C.green : "#C9CDD2" }]}>
+      <View style={[styles.track, { backgroundColor: value ? c.green : c.trackOff }]}>
         <Animated.View style={[styles.knob, { transform: [{ translateX }] }]} />
       </View>
     </TouchableOpacity>
@@ -48,6 +55,8 @@ function Toggle({
 }
 
 export default function HomeScreen({ navigation }: Props) {
+  const c = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [userName, setUserName] = useState("");
   const [available, setAvailable] = useState(true);
 
@@ -106,7 +115,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.red} />
+      <StatusBar barStyle="light-content" backgroundColor={c.bg} />
 
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.header}>
@@ -124,13 +133,18 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text
                   style={[
                     styles.statusValue,
-                    { color: available ? C.green : C.textDim },
+                    { color: available ? c.green : c.textDim },
                   ]}
                 >
                   {available ? "JESTEM W GOTOWOŚCI" : "BRAK GOTOWOŚCI"}
                 </Text>
               </View>
-              <Toggle value={available} onChange={handleAvailableChange} />
+              <Toggle
+                value={available}
+                onChange={handleAvailableChange}
+                c={c}
+                styles={styles}
+              />
             </View>
           </View>
 
@@ -174,8 +188,9 @@ const CARD_SHADOW = {
   shadowRadius: 12,
 };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   safe: { flex: 1 },
   header: {
     flexDirection: "row",
@@ -186,15 +201,15 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   unitLabel: {
-    color: C.whiteDim,
+    color: c.whiteDim,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1.5,
   },
-  userName: { color: C.white, fontSize: 30, fontWeight: "900", marginTop: 4 },
+  userName: { color: c.white, fontSize: 30, fontWeight: "900", marginTop: 4 },
   logoutBtn: { paddingVertical: 4 },
   logoutText: {
-    color: C.whiteDim,
+    color: c.whiteDim,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1,
@@ -203,17 +218,17 @@ const styles = StyleSheet.create({
   body: { flex: 1, paddingHorizontal: 20, gap: 16 },
 
   card: {
-    backgroundColor: C.cardBg,
+    backgroundColor: c.cardBg,
     padding: 22,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     ...CARD_SHADOW,
   },
   statusRow: { flexDirection: "row", alignItems: "center" },
   statusTextWrap: { flex: 1 },
   cardLabel: {
-    color: C.textDim,
+    color: c.textDim,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1.5,
@@ -227,20 +242,20 @@ const styles = StyleSheet.create({
     height: 40,
     padding: 4,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     justifyContent: "center",
   },
   knob: {
     width: 24,
     height: 24,
-    backgroundColor: C.white,
+    backgroundColor: c.cardBg,
   },
 
   rowCard: {
-    backgroundColor: C.cardBg,
+    backgroundColor: c.cardBg,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
+    borderColor: c.sand,
     padding: 16,
     flexDirection: "row",
     alignItems: "center",
@@ -250,26 +265,26 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 0,
-    backgroundColor: "#FDE7E4",
+    backgroundColor: c.errorBg,
     alignItems: "center",
     justifyContent: "center",
   },
-  rowIconText: { color: C.red, fontSize: 22, fontWeight: "900" },
+  rowIconText: { color: c.red, fontSize: 22, fontWeight: "900" },
   rowTextWrap: { flex: 1, marginLeft: 14 },
-  rowTitle: { flex: 1, color: C.textLight, fontSize: 16, fontWeight: "900" },
-  rowSub: { color: C.textDim, fontSize: 12, marginTop: 2, fontWeight: "600" },
-  chevron: { color: C.textDim, fontSize: 26, fontWeight: "300" },
+  rowTitle: { flex: 1, color: c.textLight, fontSize: 16, fontWeight: "900" },
+  rowSub: { color: c.textDim, fontSize: 12, marginTop: 2, fontWeight: "600" },
+  chevron: { color: c.textDim, fontSize: 26, fontWeight: "300" },
 
   testBtn: {
     paddingVertical: 18,
     borderRadius: 0,
     borderWidth: 4,
-    borderColor: C.sand,
-    backgroundColor: C.redDark,
+    borderColor: c.sand,
+    backgroundColor: c.redDark,
     alignItems: "center",
   },
   testBtnText: {
-    color: C.white,
+    color: c.white,
     fontSize: 14,
     fontWeight: "900",
     letterSpacing: 0.5,

@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import NetInfo from "@react-native-community/netinfo";
-import { C } from "./src/constants/theme";
+import { Palette } from "./src/constants/theme";
+import { useTheme } from "./src/hooks/useTheme";
 import {
   NavigationContainer,
   createNavigationContainerRef,
@@ -60,6 +61,8 @@ const Stack = createStackNavigator<RootStackParamList>();
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 export default function App() {
+  const c = useTheme();
+  const offlineStyles = useMemo(() => makeOfflineStyles(c), [c]);
   const [pendingAlarm, setPendingAlarm] = useState<AlarmData | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [initialRoute, setInitialRoute] = useState<"Login" | "Home" | null>(null);
@@ -161,7 +164,7 @@ export default function App() {
           initialRouteName={initialRoute}
           screenOptions={{
             headerShown: false,
-            cardStyle: { backgroundColor: C.bg },
+            cardStyle: { backgroundColor: c.bg },
             animationEnabled: true,
           }}
         >
@@ -176,7 +179,8 @@ export default function App() {
   );
 }
 
-const offlineStyles = StyleSheet.create({
-  banner: { backgroundColor: C.red, padding: 8, alignItems: "center" },
-  text: { color: C.white, fontWeight: "800", fontSize: 12 },
+const makeOfflineStyles = (c: Palette) =>
+  StyleSheet.create({
+  banner: { backgroundColor: c.red, padding: 8, alignItems: "center" },
+  text: { color: c.white, fontWeight: "800", fontSize: 12 },
 });
