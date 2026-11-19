@@ -11,8 +11,9 @@ class UserController
     public function refresh(Request $request): JsonResponse
     {
         $account = $request->user();
+        $deviceName = $account->currentAccessToken()?->name ?? 'osp-api-token';
         $account->currentAccessToken()?->delete();
-        $newToken = $account->createToken('osp-api-token')->plainTextToken;
+        $newToken = $account->createToken($deviceName)->plainTextToken;
         $account->user?->update(['last_login' => now()]);
 
         return response()->json([

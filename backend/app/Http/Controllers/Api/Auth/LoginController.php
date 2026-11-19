@@ -15,7 +15,8 @@ class LoginController
 {
     public function __invoke(LoginRequest $request): JsonResponse
     {
-        $throttleKey = Str::lower($request->email).'|'.$request->ip();
+        $email = Str::lower($request->email);
+        $throttleKey = $email.'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
@@ -24,7 +25,7 @@ class LoginController
             ], 429);
         }
 
-        $account = Account::where('email', $request->email)
+        $account = Account::where('email', $email)
             ->with(['user.roles', 'user.firehouse'])
             ->first();
 
