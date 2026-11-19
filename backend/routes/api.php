@@ -1,6 +1,5 @@
 <?php
 
-//TODO: Te poniżej są przebudowane
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\LogoutController;
@@ -10,15 +9,19 @@ use App\Http\Controllers\Api\Invitation\StoreController as StoreInvitationContro
 use App\Http\Controllers\Api\Invitation\VerifyController as VerifyInvitationController;
 use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitationController;
 use App\Http\Controllers\Api\Incident\AlarmController;
+use App\Http\Controllers\Api\Incident\AlarmTrackingController;
 
-    Route::post('/login', LoginController::class)->middleware('throttle:5,1');
-    Route::post('/register', RegisterController::class)->middleware('throttle:5,1');
-    Route::get('/invitations/verify/{token}', VerifyInvitationController::class);
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+    Route::post('/logout', LogoutController::class);
+    Route::post('/auth/refresh', [UserController::class, 'refresh']);
+    Route::get('/me', [UserController::class, 'me']);
+});
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
             Route::post('/logout', LogoutController::class);
             Route::post('/auth/refresh', [UserController::class, 'refresh']);
             Route::get('/me', [UserController::class, 'me']);
+            Route::post('/incidents/{incident}/track', AlarmTrackingController::class);
         });
 
     Route::middleware([
