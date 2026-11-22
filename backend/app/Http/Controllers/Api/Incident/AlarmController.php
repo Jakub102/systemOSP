@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1\Incident;
+namespace App\Http\Controllers\Api\Incident;
 
-use App\Http\Requests\Api\V1\Incident\IncidentRequest;
+use App\Http\Requests\Api\Incident\IncidentRequest;
 use App\Http\Resources\IncidentResource;
 use App\Services\FcmService;
 use Illuminate\Support\Facades\Log;
