@@ -1,4 +1,5 @@
-import { NativeModules, Platform, PermissionsAndroid } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import type { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -11,32 +12,41 @@ import type {
   UserProfile,
 } from '../types';
 
-const isNative = !!NativeModules.RNPushNotification || !!NativeModules.RNFBAppModule;
+const isNative = !!NativeModules.RNFBAppModule;
 
 type MessagingFn = () => FirebaseMessagingTypes.Module;
-type PushNotificationModule = {
-  createChannel: (channel: Record<string, unknown>, callback: () => void) => void;
-  deleteChannel: (channelId: string) => void;
-  localNotification: (details: Record<string, unknown>) => void;
-  cancelLocalNotification: (id: string) => void;
-};
 
-export const ALARM_CHANNEL_ID = 'osp-alarm-v3';
-const LEGACY_CHANNEL_IDS = ['osp-alarm', 'osp-alarm-v2'];
+// Ustawienia kanalu sa w Androidzie niezmienne po jego utworzeniu, wiec kazda
+// zmiana dzwieku albo kategorii audio wymaga NOWEGO id. Stare kasujemy nizej.
+export const ALARM_CHANNEL_ID = 'osp-alarm-v4';
+const LEGACY_CHANNEL_IDS = ['osp-alarm', 'osp-alarm-v2', 'osp-alarm-v3'];
 const ALARM_SOUND = 'syrena.wav';
+// Identyfikator kategorii nie moze zawierac znakow ':' ani '-'.
+export const ALARM_CATEGORY_ID = 'ospalarm';
+export const ACTION_GOING = 'going';
+export const ACTION_NOT_GOING = 'notgoing';
 const ALARM_TOPIC = 'system-alert';
 
 let messagingFn: MessagingFn | null = null;
-let PushNotification: PushNotificationModule | null = null;
 
 if (isNative) {
   try {
     messagingFn = require('@react-native-firebase/messaging').default as MessagingFn;
-    PushNotification = require('react-native-push-notification') as PushNotificationModule;
   } catch {
-    console.log('Moduły natywne niedostępne, tryb demo');
+    console.log('Moduly natywne niedostepne, tryb demo');
   }
 }
+
+// Alarm na pierwszym planie obsluguje AlarmScreen z wlasna syrena, wiec
+// powiadomienie w belce byloby drugim zrodlem dzwieku.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: false,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? '';
 
@@ -82,21 +92,55 @@ api.interceptors.response.use(
   },
 );
 
-export const setupNotificationChannels = () => {
-  LEGACY_CHANNEL_IDS.forEach((channelId) => PushNotification?.deleteChannel(channelId));
+const VIBRATION_PATTERN = [0, 800, 200, 800, 200, 1000];
 
-  PushNotification?.createChannel(
-    {
-      channelId: ALARM_CHANNEL_ID,
-      channelName: 'Alarmy OSP',
-      channelDescription: 'Wezwania do wyjazdu - syrena i wibracja',
-      importance: 5, // MAX: heads-up + dźwięk
-      soundName: ALARM_SOUND,
-      playSound: true,
-      vibrate: true,
-    },
-    () => {},
+/**
+ * Kanal alarmowy i przyciski powiadomienia.
+ *
+ * Kluczowe jest audioAttributes.usage ustawione na ALARM: dzieki temu syrena
+ * gra na strumieniu alarmowym, a nie multimediow, wiec wyciszona muzyka nie
+ * ucisza alarmu. bypassDnd pozwala przebic tryb "Nie przeszkadzac".
+ */
+export const setupNotificationChannels = async (): Promise<void> => {
+  if (Platform.OS !== 'android') return;
+
+  await Promise.all(
+    LEGACY_CHANNEL_IDS.map((id) =>
+      Notifications.deleteNotificationChannelAsync(id).catch(() => {}),
+    ),
   );
+
+  await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
+    name: 'Alarmy OSP',
+    description: 'Wezwania do wyjazdu - syrena i wibracja',
+    importance: Notifications.AndroidImportance.MAX,
+    sound: ALARM_SOUND,
+    vibrationPattern: VIBRATION_PATTERN,
+    enableVibrate: true,
+    bypassDnd: true,
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    audioAttributes: {
+      usage: Notifications.AndroidAudioUsage.ALARM,
+      contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+      flags: {
+        enforceAudibility: true,
+        requestHardwareAudioVideoSynchronization: false,
+      },
+    },
+  });
+
+  await Notifications.setNotificationCategoryAsync(ALARM_CATEGORY_ID, [
+    {
+      identifier: ACTION_GOING,
+      buttonTitle: 'JADĘ',
+      options: { opensAppToForeground: true },
+    },
+    {
+      identifier: ACTION_NOT_GOING,
+      buttonTitle: 'NIE JADĘ',
+      options: { opensAppToForeground: false },
+    },
+  ]);
 };
 
 const toNumberOrNull = (value: unknown): number | null => {
@@ -147,36 +191,28 @@ const alarmToPayload = (alarm: AlarmData): Record<string, string> => ({
   responseDeadlineMinutes: String(alarm.responseDeadlineMinutes ?? 3),
 });
 
-const notificationIdFor = (alarmId: string): string => {
-  let hash = 0;
-  for (let i = 0; i < alarmId.length; i++) {
-    hash = (hash * 31 + alarmId.charCodeAt(i)) | 0;
-  }
-  return String(Math.abs(hash) % 2147483647);
-};
-
-export const showAlarmNotification = (alarm: AlarmData) => {
-  PushNotification?.localNotification({
-    channelId: ALARM_CHANNEL_ID,
-    id: notificationIdFor(alarm.alarmId),
-    title: alarm.incidentType,
-    message: alarm.address || 'Wezwanie do wyjazdu',
-    bigText: [alarm.address, alarm.notes].filter(Boolean).join('\n'),
-    priority: 'max',
-    importance: 'max',
-    soundName: ALARM_SOUND,
-    playSound: true,
-    vibrate: true,
-    vibration: 1000,
-    autoCancel: true,
-    actions: ['JADĘ', 'NIE JADĘ'],
-    invokeApp: true,
-    userInfo: alarmToPayload(alarm),
+export const showAlarmNotification = async (alarm: AlarmData): Promise<void> => {
+  await Notifications.scheduleNotificationAsync({
+    // alarmId jako identyfikator powiadomienia - ten sam alarm nie zdubluje sie
+    // w belce i da sie je potem skasowac po odpowiedzi.
+    identifier: alarm.alarmId,
+    content: {
+      title: alarm.incidentType,
+      body: [alarm.address, alarm.notes].filter(Boolean).join('\n') ||
+        'Wezwanie do wyjazdu',
+      data: alarmToPayload(alarm),
+      sound: ALARM_SOUND,
+      vibrate: VIBRATION_PATTERN,
+      priority: 'max',
+      categoryIdentifier: ALARM_CATEGORY_ID,
+      autoDismiss: true,
+    },
+    trigger: null,
   });
 };
 
 export const cancelAlarmNotification = (alarmId: string) => {
-  PushNotification?.cancelLocalNotification(notificationIdFor(alarmId));
+  Notifications.dismissNotificationAsync(alarmId).catch(() => {});
 };
 
 let backgroundHandlerRegistered = false;
@@ -189,8 +225,8 @@ export const registerBackgroundHandler = () => {
       const alarm = parseAlarmData(remoteMessage.data);
       if (!alarm) return;
 
-      setupNotificationChannels();
-      showAlarmNotification(alarm);
+      await setupNotificationChannels();
+      await showAlarmNotification(alarm);
     });
     backgroundHandlerRegistered = true;
   } catch (e) {
@@ -199,21 +235,20 @@ export const registerBackgroundHandler = () => {
   }
 };
 
-const requestPushPermission = async (): Promise<boolean> => {
-  if (Platform.OS !== 'android' || Number(Platform.Version) < 33) {
-    return true;
-  }
-  const result = await PermissionsAndroid.request(
-    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-    {
-      title: 'Uprawnienie do powiadomień',
-      message:
-        'Aplikacja wymaga uprawnień do wysyłania powiadomień push, aby alarmować o zdarzeniach. Bez tego alarmy nie będą docierać.',
-      buttonPositive: 'Zezwól',
-      buttonNegative: 'Odmów',
-    },
-  );
-  return result === PermissionsAndroid.RESULTS.GRANTED;
+/** Uprawnienie do powiadomien (Android 13+ oraz iOS). */
+export const requestPushPermission = async (): Promise<boolean> => {
+  const current = await Notifications.getPermissionsAsync();
+  if (current.granted) return true;
+  if (!current.canAskAgain) return false;
+
+  const result = await Notifications.requestPermissionsAsync();
+  return result.granted;
+};
+
+/** Czy aplikacja moze dzis wyswietlac powiadomienia - do ostrzezenia w UI. */
+export const hasNotificationPermission = async (): Promise<boolean> => {
+  const current = await Notifications.getPermissionsAsync();
+  return current.granted;
 };
 
 export const initFCM = async (
