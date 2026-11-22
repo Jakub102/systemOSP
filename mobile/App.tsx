@@ -7,7 +7,8 @@ import {
   createNavigationContainerRef,
 } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
-import { Platform, NativeModules, View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
@@ -18,6 +19,8 @@ import {
   registerBackgroundHandler,
   cancelAlarmNotification,
   parseAlarmData,
+  ACTION_GOING,
+  ACTION_NOT_GOING,
 } from "./src/services/AlarmService";
 import AlarmScreen from "./src/screens/AlarmScreen";
 import AlarmConfirmScreen from "./src/screens/AlarmConfirmScreen";
@@ -25,35 +28,6 @@ import HistoryScreen from "./src/screens/HistoryScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 import { AlarmData, RootStackParamList } from "./src/types";
-
-const isNativePushAvailable = !!NativeModules.RNPushNotification;
-
-
-type PushNotificationEvent = {
-  data?: Record<string, unknown>;
-  userInfo?: Record<string, unknown>;
-  action?: string;
-  userInteraction?: boolean;
-  finish?: (result: string) => void;
-};
-type PushNotificationConfig = {
-  onNotification: (notification: PushNotificationEvent) => void;
-  onAction: (notification: PushNotificationEvent) => void;
-  popInitialNotification: boolean;
-  requestPermissions: boolean;
-};
-type PushNotificationStatic = { configure: (cfg: PushNotificationConfig) => void };
-
-const alarmFromEvent = (notification: PushNotificationEvent) =>
-  parseAlarmData({ ...notification.data, ...notification.userInfo });
-
-let PushNotification: PushNotificationStatic | null = null;
-if (isNativePushAvailable) {
-  try {
-    PushNotification = require("react-native-push-notification") as PushNotificationStatic;
-  } catch {}
-}
-
 
 registerBackgroundHandler();
 
@@ -101,38 +75,46 @@ export default function App() {
   useEffect(() => {
     if (!initialRoute) return;
 
-    if (isNativePushAvailable) setupNotificationChannels();
+    setupNotificationChannels().catch((e) =>
+      console.warn("Nie udalo sie przygotowac kanalu powiadomien:", e),
+    );
 
-    if (isNativePushAvailable && PushNotification) {
-      try {
-        PushNotification.configure({
-          onNotification: (notification) => {
-            const alarmData = alarmFromEvent(notification);
-            if (notification.userInteraction && alarmData) openAlarm(alarmData);
-            notification.finish?.("UIBackgroundFetchResultNoData"); // wymagane na iOS
-          },
-          onAction: (notification) => {
-            const alarmData = alarmFromEvent(notification);
-            if (!alarmData) return;
+    // Reakcja na powiadomienie: tapniecie w tresc otwiera ekran alarmu,
+    // a przyciski JADE / NIE JADE wysylaja decyzje od razu.
+    const handleResponse = (response: Notifications.NotificationResponse) => {
+      const alarmData = parseAlarmData(
+        response.notification.request.content.data,
+      );
+      if (!alarmData) return;
 
-            const status = notification.action === "JADĘ" ? "going" : "not_going";
-            cancelAlarmNotification(alarmData.alarmId);
+      const action = response.actionIdentifier;
 
-            sendAlarmResponse(alarmData.alarmId, status)
-              .then(() => {
-                if (navigationRef.isReady()) {
-                  navigationRef.navigate("AlarmConfirm", { alarmData, status });
-                }
-              })
-              .catch((e) => console.warn("Quick response error:", e));
-          },
-          popInitialNotification: true, // alarm, który podniósł apkę z martwych
-          requestPermissions: Platform.OS === "ios",
-        });
-      } catch (e) {
-        console.warn("PushNotification.configure error:", e);
+      if (action === ACTION_GOING || action === ACTION_NOT_GOING) {
+        const status = action === ACTION_GOING ? "going" : "not_going";
+        cancelAlarmNotification(alarmData.alarmId);
+
+        sendAlarmResponse(alarmData.alarmId, status)
+          .then(() => {
+            if (navigationRef.isReady()) {
+              navigationRef.navigate("AlarmConfirm", { alarmData, status });
+            }
+          })
+          .catch((e) => console.warn("Quick response error:", e));
+        return;
       }
-    }
+
+      openAlarm(alarmData);
+    };
+
+    const responseSub =
+      Notifications.addNotificationResponseReceivedListener(handleResponse);
+
+    // Alarm, ktory podniosl aplikacje z martwych.
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) handleResponse(response);
+      })
+      .catch(() => {});
 
     let unsubscribeFCM: (() => void) | null = null;
     const setupFCM = async () => {
@@ -140,7 +122,10 @@ export default function App() {
     };
     setupFCM().catch((e) => console.warn("Inicjalizacja FCM nieudana:", e));
 
-    return () => unsubscribeFCM?.();
+    return () => {
+      responseSub.remove();
+      unsubscribeFCM?.();
+    };
   }, [initialRoute, openAlarm]);
 
   const handleNavReady = () => {

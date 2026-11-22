@@ -12,9 +12,14 @@
       "supportsTablet": true
     },
     "plugins": [
-      "./plugins/withAlarmSound",
-      "./plugins/withPushReceivers",
-      "./plugins/withJetifier",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/syrena.wav"
+          ]
+        }
+      ],
       [
         "expo-av",
         {
