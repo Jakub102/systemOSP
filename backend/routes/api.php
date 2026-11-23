@@ -11,10 +11,12 @@ use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitati
 use App\Http\Controllers\Api\Incident\AlarmController;
 use App\Http\Controllers\Api\Incident\AlarmTrackingController;
 
+
+Route::post('/login', LoginController::class)->middleware('throttle:5,1');
+Route::post('/register', RegisterController::class)->middleware('throttle:5,1');
+Route::get('/invitations/verify/{token}', VerifyInvitationController::class);
+
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
-    Route::post('/login', LoginController::class);
-    Route::post('/register', RegisterController::class);
-    Route::get('/invitations/verify/{token}', VerifyInvitationController::class);
     Route::post('/logout', LogoutController::class);
     Route::post('/auth/refresh', [UserController::class, 'refresh']);
     Route::get('/me', [UserController::class, 'me']);
