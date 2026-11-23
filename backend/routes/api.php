@@ -10,22 +10,21 @@ use App\Http\Controllers\Api\Invitation\VerifyController as VerifyInvitationCont
 use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitationController;
 use App\Http\Controllers\Api\Incident\AlarmController;
 use App\Http\Controllers\Api\Incident\AlarmTrackingController;
+use App\Http\Controllers\Api\Tracker\TrackerController;
+
+Route::post('/login', LoginController::class)->middleware('throttle:5,1');
+Route::post('/register', RegisterController::class)->middleware('throttle:5,1');
+Route::get('/invitations/verify/{token}', VerifyInvitationController::class);
 
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
-    Route::post('/login', LoginController::class);
-    Route::post('/register', RegisterController::class);
-    Route::get('/invitations/verify/{token}', VerifyInvitationController::class);
     Route::post('/logout', LogoutController::class);
     Route::post('/auth/refresh', [UserController::class, 'refresh']);
     Route::get('/me', [UserController::class, 'me']);
+    Route::post('/incidents/{incident}/track', AlarmTrackingController::class);
+    Route::post('/incidents/{incident}/location', [TrackerController::class, 'update']);
+    Route::patch('/incidents/{incident}/location', [TrackerController::class, 'update']);
+    Route::get('/incidents/{incident}/location', [TrackerController::class, 'show']);
 });
-
-    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
-            Route::post('/logout', LogoutController::class);
-            Route::post('/auth/refresh', [UserController::class, 'refresh']);
-            Route::get('/me', [UserController::class, 'me']);
-            Route::post('/incidents/{incident}/track', AlarmTrackingController::class);
-        });
 
     Route::middleware([
         'auth:sanctum', 
