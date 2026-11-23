@@ -21,7 +21,6 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
             Route::post('/logout', LogoutController::class);
             Route::post('/auth/refresh', [UserController::class, 'refresh']);
             Route::get('/me', [UserController::class, 'me']);
-            Route::post('/incidents/{incident}/track', AlarmTrackingController::class);
         });
 
     Route::middleware([
