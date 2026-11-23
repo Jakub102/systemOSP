@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Incident\AlarmTrackingController;
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/login', LoginController::class);
     Route::post('/register', RegisterController::class);
+    Route::get('/invitations/verify/{token}', VerifyInvitationController::class);
     Route::post('/logout', LogoutController::class);
     Route::post('/auth/refresh', [UserController::class, 'refresh']);
     Route::get('/me', [UserController::class, 'me']);
