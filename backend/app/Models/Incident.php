@@ -30,6 +30,43 @@ class Incident extends Model
         'raw_payload' => 'array',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Incident $incident): void {
+            if (empty($incident->external_id)) {
+                $incident->external_id = static::generateNextExternalId($incident->main_category);
+            }
+        });
+    }
+
+    /**
+     * Generuje unikalny external_id (np. INC-2026-F-1) odporny na usuwanie rekordów
+     * oraz wyścigi (race conditions) dzięki blokadzie pesymistycznej lockForUpdate().
+     */
+    public static function generateNextExternalId(string $mainCategory): string
+    {
+        $categoryCode = strtoupper(trim($mainCategory));
+        $year = now()->format('Y');
+        $prefix = "INC-{$year}-{$categoryCode}-";
+
+        $lastExternalId = static::query()
+            ->where('main_category', $categoryCode)
+            ->whereYear('created_at', $year)
+            ->where('external_id', 'like', "{$prefix}%")
+            ->lockForUpdate()
+            ->orderByDesc('id')
+            ->value('external_id');
+
+        $lastNumber = 0;
+        if ($lastExternalId && preg_match('/-(\d+)$/', $lastExternalId, $matches)) {
+            $lastNumber = (int) $matches[1];
+        }
+
+        $nextNumber = $lastNumber + 1;
+
+        return "{$prefix}{$nextNumber}";
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
@@ -38,7 +75,7 @@ class Incident extends Model
                 'attendance_status',
                 'confirmed_latitude',
                 'confirmed_longitude',
-                'confirmed_at'
+                'confirmed_at',
             ])
             ->withTimestamps();
     }

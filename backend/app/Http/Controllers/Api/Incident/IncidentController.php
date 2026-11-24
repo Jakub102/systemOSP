@@ -7,6 +7,7 @@ use App\Http\Resources\IncidentResource;
 use App\Models\Incident;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class IncidentController
 {
@@ -20,8 +21,8 @@ class IncidentController
     public function store(IncidentRequest $request, array $additionalData = []): IncidentResource
     {
         $data = array_merge($request->validated(), $additionalData);
-    
-        $incident = Incident::create($data);
+
+        $incident = DB::transaction(fn () => Incident::create($data));
 
         return new IncidentResource($incident);
     }

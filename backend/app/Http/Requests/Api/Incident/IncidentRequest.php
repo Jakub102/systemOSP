@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\Incident;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class IncidentRequest extends FormRequest
 {
@@ -11,39 +12,26 @@ class IncidentRequest extends FormRequest
         return true;
     }
 
-protected function prepareForValidation(): void
-{
-    if (!$this->has('external_id') || empty($this->input('external_id'))) {
-        $mainCategory = $this->input('main_category');
-        $prefixCategory = strtoupper(substr($mainCategory, 0, 1)); 
-        $year = now()->format('Y'); 
-
-        $count = \App\Models\Incident::where('main_category', $mainCategory)
-            ->whereYear('created_at', $year)
-            ->count();
-        
-        $nextNumber = $count + 1;
-
-        $this->merge([
-            'external_id' => "INC-{$year}-{$prefixCategory}-{$nextNumber}"
-        ]);
-    }
-}
-
     public function rules(): array
     {
         $isUpdate = $this->isMethod('put') || $this->isMethod('patch');
+        $reqOrSometimes = $isUpdate ? 'sometimes' : 'required';
 
         return [
-            'external_id' => [$isUpdate ? 'sometimes' : 'required', 'string', 'max:255'],
-            'main_category' => [$isUpdate ? 'sometimes' : 'required', 'string', 'max:255'],
-            'sub_category' => ['nullable', 'string', 'max:255'],
+            'external_id' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('incidents', 'external_id')->ignore($this->route('incident')),
+            ],
+            'main_category' => [$reqOrSometimes, 'string', Rule::in(['F', 'LT', 'A', 'M', 'FA'])],
+            'sub_category' => [$reqOrSometimes, 'string', 'max:100'],
             'description' => ['nullable', 'string'],
-            'incident_time' => [$isUpdate ? 'sometimes' : 'required', 'date'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'status' => ['nullable', 'string', 'max:50'],
+            'incident_time' => [$reqOrSometimes, 'date'],
+            'address' => [$reqOrSometimes, 'string', 'max:255'],
+            'latitude' => [$reqOrSometimes, 'numeric', 'between:-90,90'],
+            'longitude' => [$reqOrSometimes, 'numeric', 'between:-180,180'],
+            'status' => ['nullable', 'string', Rule::in(['ACTIVE', 'END'])],
             'raw_payload' => ['nullable', 'array'],
         ];
     }
