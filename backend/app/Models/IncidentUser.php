@@ -20,6 +20,8 @@ class IncidentUser extends Pivot
     ];
 
     protected $casts = [
+        'confirmed_latitude' => 'float',
+        'confirmed_longitude' => 'float',
         'confirmed_at' => 'datetime',
     ];
 }

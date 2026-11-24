@@ -13,6 +13,12 @@ class AccountSeeder extends Seeder
     {
         DB::table('accounts')->insert([
             [
+                'email' => 'system@vfd.pl',
+                'password' => Hash::make('password123'),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ],
+            [
                 'email' => 'admin@vfd.pl',
                 'password' => Hash::make('password123'),
                 'created_at' => Carbon::now(),

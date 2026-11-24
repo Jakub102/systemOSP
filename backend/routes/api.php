@@ -10,6 +10,11 @@ use App\Http\Controllers\Api\Invitation\VerifyController as VerifyInvitationCont
 use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitationController;
 use App\Http\Controllers\Api\Incident\AlarmController;
 use App\Http\Controllers\Api\Incident\AlarmTrackingController;
+use App\Http\Controllers\Api\Tracker\TrackerController;
+
+Route::post('/login', LoginController::class)->middleware('throttle:5,1');
+Route::post('/register', RegisterController::class)->middleware('throttle:5,1');
+Route::get('/invitations/verify/{token}', VerifyInvitationController::class);
 
 
 Route::post('/login', LoginController::class)->middleware('throttle:5,1');
@@ -20,14 +25,14 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/logout', LogoutController::class);
     Route::post('/auth/refresh', [UserController::class, 'refresh']);
     Route::get('/me', [UserController::class, 'me']);
+    Route::patch('/me/readiness', [UserController::class, 'updateReadiness']);
+    Route::get('/incidents/my', [TrackerController::class, 'myIncidents']);
+    Route::post('/incidents/{incident}/respond', [TrackerController::class, 'respond']);
+    Route::patch('/incidents/{incident}/respond', [TrackerController::class, 'respond']);
+    Route::post('/incidents/{incident}/track', AlarmTrackingController::class);
+    Route::post('/incidents/{incident}/location', [TrackerController::class, 'update']);
+    Route::patch('/incidents/{incident}/location', [TrackerController::class, 'update']);
 });
-
-    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
-            Route::post('/logout', LogoutController::class);
-            Route::post('/auth/refresh', [UserController::class, 'refresh']);
-            Route::get('/me', [UserController::class, 'me']);
-            Route::post('/incidents/{incident}/track', AlarmTrackingController::class);
-        });
 
     Route::middleware([
         'auth:sanctum', 
@@ -40,9 +45,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     Route::middleware([
         'auth:sanctum', 
-        'throttle:5,1', 
+        'throttle:api', 
         'role:system'
     ])->group(function () {
-        Route::post('/incident/new', AlarmController::class);
+        Route::post('/incident/new', AlarmController::class)->middleware('throttle:5,1');
+        Route::get('/incidents/{incident}/location', [TrackerController::class, 'show']);
     });
 

@@ -16,13 +16,15 @@ return new class extends Migration
             $table->foreignId('incident_id')->constrained('incidents')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
 
-            $table->string('attendance_status', 20)->default('pending');
+            $table->string('attendance_status', 20)->default('end');
             $table->decimal('confirmed_latitude', 10, 8)->nullable();
             $table->decimal('confirmed_longitude', 11, 8)->nullable();
             $table->timestamp('confirmed_at')->nullable();
 
             $table->timestamps();
-});
+
+            $table->unique(['incident_id', 'user_id']);
+        });
     }
 
     /**

@@ -29,4 +29,23 @@ class UserController
         return response()->json(['user' => new UserResource($account->user)], 200);
     }
 
+    public function updateReadiness(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'readiness_status' => ['required', 'string', 'in:active,in_active'],
+        ]);
+
+        $account = $request->user()->loadMissing(['user.roles', 'user.firehouse']);
+        $user = $account->user;
+
+        $user->update([
+            'readiness_status' => $validated['readiness_status'],
+        ]);
+
+        return response()->json([
+            'message' => 'Zaktualizowano status gotowości.',
+            'user' => new UserResource($user),
+        ], 200);
+    }
+
 }
