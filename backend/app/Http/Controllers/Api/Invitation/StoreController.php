@@ -7,8 +7,8 @@ use App\Http\Resources\InvitationResource;
 use App\Mail\UserInvitationMail;
 use App\Models\Invitation;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class StoreController
 {
@@ -31,17 +31,20 @@ class StoreController
             ], 422);
         }
 
+        // Token CSPRNG (256 bitów) wysyłamy tylko w mailu; w bazie przechowujemy wyłącznie hash SHA-256.
+        $plainToken = bin2hex(random_bytes(32));
+
         $invitation->role_id = $data['role_id'];
         $invitation->firehouse_id = $inviter->firehouse_id;
-        $invitation->token = Str::random(64);
+        $invitation->token = hash('sha256', $plainToken);
         $invitation->expires_at = now()->addHours(48);
         $invitation->used_at = null;
 
         $invitation->save();
 
         rescue(
-            fn () => Mail::to($invitation->email)->send(new UserInvitationMail($invitation->loadMissing('firehouse'))),
-            fn (\Throwable $e) => \Illuminate\Support\Facades\Log::error('Błąd wysyłki maila z zaproszeniem: ' . $e->getMessage())
+            fn () => Mail::to($invitation->email)->send(new UserInvitationMail($invitation->loadMissing('firehouse'), $plainToken)),
+            fn (\Throwable $e) => Log::error('Błąd wysyłki maila z zaproszeniem: '.$e->getMessage())
         );
 
         $message = $invitation->wasRecentlyCreated

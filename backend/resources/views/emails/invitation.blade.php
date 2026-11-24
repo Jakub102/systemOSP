@@ -34,7 +34,7 @@
                         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fff5f5; border-left: 4px solid #e3342f; border-radius: 4px; margin-bottom: 30px;">
                             <tr>
                                 <td style="padding: 12px 15px; font-size: 14px; color: #742a2a;">
-                                    Link jest ważny przez 48 godzin (wygasa: <strong>{{ $invitation->expires_at->format('d.m.Y H:i') }}</strong>).
+                                    Link jest ważny przez 48 godzin (wygasa: <strong>{{ $expiresAtFormatted }}</strong>).
                                 </td>
                             </tr>
                         </table>

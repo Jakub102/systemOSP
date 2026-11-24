@@ -7,6 +7,7 @@ use App\Http\Requests\Api\Incident\UpdateLocationRequest;
 use App\Models\Firehouse;
 use App\Models\Incident;
 use App\Models\IncidentUser;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -20,9 +21,8 @@ class TrackerController
     }
 
     /**
-     * Zwraca listę aktywnych oraz ostatnich alarmów dla zalogowanego strażaka
-     * wraz z jego aktualnym statusem udziału (pending / accepted / rejected / on_scene),
-     * aby mógł w razie pomyłki wejść i zmienić decyzję.
+     * Zwraca listę aktywnych alarmów dla zalogowanego strażaka
+     * wraz z jego aktualnym statusem udziału (pending / accepted / rejected / on_scene).
      */
     public function myIncidents(Request $request): JsonResponse
     {
@@ -87,25 +87,20 @@ class TrackerController
         $confirmedAt = now();
 
         if ($attendanceStatus === 'rejected') {
-            $incident->users()->syncWithoutDetaching([
-                $user->id => [
+            IncidentUser::updateOrCreate(
+                ['incident_id' => $incident->id, 'user_id' => $user->id],
+                [
                     'attendance_status' => 'rejected',
                     'confirmed_latitude' => null,
                     'confirmed_longitude' => null,
                     'confirmed_at' => $confirmedAt,
-                ],
-            ]);
+                ]
+            );
 
-            return response()->json([
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'full_name' => "{$user->first_name} {$user->last_name}",
-                'roles' => $user->roles->pluck('display_name')->values(),
-                'attendance_status' => 'rejected',
-                'latitude' => null,
-                'longitude' => null,
-                'should_stop_tracking' => true,
-            ], 200);
+            return response()->json(
+                $this->formatFirefighterResponse($user, 'rejected', null, null, true),
+                200
+            );
         }
 
         $userLat = isset($validated['latitude']) ? (float) $validated['latitude'] : null;
@@ -116,12 +111,7 @@ class TrackerController
             $firehouse = $user->firehouse ?? Firehouse::first();
 
             if ($firehouse) {
-                $distanceMeters = $this->calculateDistanceInMeters(
-                    $userLat,
-                    $userLng,
-                    (float) $firehouse->latitude,
-                    (float) $firehouse->longitude
-                );
+                $distanceMeters = $firehouse->distanceInMetersTo($userLat, $userLng);
 
                 if ($distanceMeters <= self::ARRIVAL_RADIUS_METERS) {
                     $hasArrived = true;
@@ -130,30 +120,25 @@ class TrackerController
             }
         }
 
-        $incident->users()->syncWithoutDetaching([
-            $user->id => [
+        IncidentUser::updateOrCreate(
+            ['incident_id' => $incident->id, 'user_id' => $user->id],
+            [
                 'attendance_status' => $attendanceStatus,
                 'confirmed_latitude' => $userLat,
                 'confirmed_longitude' => $userLng,
                 'confirmed_at' => $confirmedAt,
-            ],
-        ]);
+            ]
+        );
 
-        return response()->json([
-            'first_name' => $user->first_name,
-            'last_name' => $user->last_name,
-            'full_name' => "{$user->first_name} {$user->last_name}",
-            'roles' => $user->roles->pluck('display_name')->values(),
-            'attendance_status' => $attendanceStatus,
-            'latitude' => $userLat,
-            'longitude' => $userLng,
-            'should_stop_tracking' => $hasArrived,
-        ], 200);
+        return response()->json(
+            $this->formatFirefighterResponse($user, $attendanceStatus, $userLat, $userLng, $hasArrived),
+            200
+        );
     }
 
     /**
      * Aktualizuje lokalizację zalogowanego strażaka w tabeli incident_user
-     * podczas dojazdu do remizy / zdarzenia.
+     * podczas dojazdu do remizy. Wymaga wcześniejszej deklaracji udziału ("accepted").
      */
     public function update(UpdateLocationRequest $request, Incident $incident): JsonResponse
     {
@@ -178,30 +163,31 @@ class TrackerController
             ->where('user_id', $user->id)
             ->first();
 
-        if ($existingPivot && $existingPivot->attendance_status === 'on_scene') {
+        if (!$existingPivot || $existingPivot->attendance_status === 'pending') {
             return response()->json([
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'full_name' => "{$user->first_name} {$user->last_name}",
-                'roles' => $user->roles->pluck('display_name')->values(),
-                'attendance_status' => 'on_scene',
-                'latitude' => $existingPivot->confirmed_latitude,
-                'longitude' => $existingPivot->confirmed_longitude,
+                'message' => 'Najpierw zadeklaruj udział w zdarzeniu, aby uruchomić śledzenie lokalizacji.',
                 'should_stop_tracking' => true,
-            ], 200);
+            ], 409);
         }
 
-        if ($existingPivot && $existingPivot->attendance_status === 'rejected') {
-            return response()->json([
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'full_name' => "{$user->first_name} {$user->last_name}",
-                'roles' => $user->roles->pluck('display_name')->values(),
-                'attendance_status' => 'rejected',
-                'latitude' => null,
-                'longitude' => null,
-                'should_stop_tracking' => true,
-            ], 200);
+        if ($existingPivot->attendance_status === 'on_scene') {
+            return response()->json(
+                $this->formatFirefighterResponse(
+                    $user,
+                    'on_scene',
+                    $existingPivot->confirmed_latitude,
+                    $existingPivot->confirmed_longitude,
+                    true
+                ),
+                200
+            );
+        }
+
+        if ($existingPivot->attendance_status === 'rejected') {
+            return response()->json(
+                $this->formatFirefighterResponse($user, 'rejected', null, null, true),
+                200
+            );
         }
 
         $validated = $request->validated();
@@ -217,35 +203,21 @@ class TrackerController
             ], 422);
         }
 
-        $distanceMeters = $this->calculateDistanceInMeters(
-            $userLat,
-            $userLng,
-            (float) $firehouse->latitude,
-            (float) $firehouse->longitude
-        );
-
+        $distanceMeters = $firehouse->distanceInMetersTo($userLat, $userLng);
         $hasArrived = $distanceMeters <= self::ARRIVAL_RADIUS_METERS;
         $attendanceStatus = $hasArrived ? 'on_scene' : 'accepted';
 
-        $incident->users()->syncWithoutDetaching([
-            $user->id => [
-                'attendance_status' => $attendanceStatus,
-                'confirmed_latitude' => $userLat,
-                'confirmed_longitude' => $userLng,
-                'confirmed_at' => now(),
-            ],
+        $existingPivot->update([
+            'attendance_status' => $attendanceStatus,
+            'confirmed_latitude' => $userLat,
+            'confirmed_longitude' => $userLng,
+            'confirmed_at' => now(),
         ]);
 
-        return response()->json([
-            'first_name' => $user->first_name,
-            'last_name' => $user->last_name,
-            'full_name' => "{$user->first_name} {$user->last_name}",
-            'roles' => $user->roles->pluck('display_name')->values(),
-            'attendance_status' => $attendanceStatus,
-            'latitude' => $userLat,
-            'longitude' => $userLng,
-            'should_stop_tracking' => $hasArrived,
-        ], 200);
+        return response()->json(
+            $this->formatFirefighterResponse($user, $attendanceStatus, $userLat, $userLng, $hasArrived),
+            200
+        );
     }
 
     /**
@@ -258,7 +230,7 @@ class TrackerController
             ->wherePivotIn('attendance_status', ['accepted', 'on_scene'])
             ->with('roles')
             ->get()
-            ->map(fn ($user) => [
+            ->map(fn (User $user) => [
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'full_name' => "{$user->first_name} {$user->last_name}",
@@ -283,22 +255,22 @@ class TrackerController
         ], 200);
     }
 
-    /**
-     * Oblicza odległość w metrach między dwoma punktami GPS (wzór Haversine).
-     */
-    private function calculateDistanceInMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
-    {
-        $earthRadius = 6371000;
-
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-
-        $a = sin($dLat / 2) * sin($dLat / 2)
-            + cos(deg2rad($lat1)) * cos(deg2rad($lat2))
-            * sin($dLon / 2) * sin($dLon / 2);
-
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-        return $earthRadius * $c;
+    private function formatFirefighterResponse(
+        User $user,
+        string $attendanceStatus,
+        ?float $latitude,
+        ?float $longitude,
+        bool $shouldStopTracking
+    ): array {
+        return [
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'full_name' => "{$user->first_name} {$user->last_name}",
+            'roles' => $user->roles->pluck('display_name')->values(),
+            'attendance_status' => $attendanceStatus,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'should_stop_tracking' => $shouldStopTracking,
+        ];
     }
 }

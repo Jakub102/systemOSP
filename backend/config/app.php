@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Europe/Warsaw'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

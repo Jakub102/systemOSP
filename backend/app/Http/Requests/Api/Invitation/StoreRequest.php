@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\Invitation;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class StoreRequest extends FormRequest
@@ -10,6 +11,15 @@ class StoreRequest extends FormRequest
     public function authorize(): bool
     {
         return (bool) $this->user()?->user?->firehouse_id;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('email'))) {
+            $this->merge([
+                'email' => Str::lower(trim($this->input('email'))),
+            ]);
+        }
     }
 
     public function rules(): array

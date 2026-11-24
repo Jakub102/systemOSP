@@ -33,6 +33,9 @@ class Incident extends Model
         'longitude',
         'status',
         'raw_payload',
+        'fcm_message_id',
+        'fcm_sent_count',
+        'fcm_dispatched_at',
     ];
 
     protected $casts = [
@@ -40,6 +43,8 @@ class Incident extends Model
         'latitude' => 'float',
         'longitude' => 'float',
         'raw_payload' => 'array',
+        'fcm_sent_count' => 'integer',
+        'fcm_dispatched_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -61,20 +66,24 @@ class Incident extends Model
         $year = now()->format('Y');
         $prefix = "INC-{$year}-{$categoryCode}-";
 
-        $lastExternalId = static::query()
+        $existingIds = static::query()
             ->where('main_category', $categoryCode)
             ->whereYear('created_at', $year)
             ->where('external_id', 'like', "{$prefix}%")
             ->lockForUpdate()
-            ->orderByDesc('id')
-            ->value('external_id');
+            ->pluck('external_id');
 
-        $lastNumber = 0;
-        if ($lastExternalId && preg_match('/-(\d+)$/', $lastExternalId, $matches)) {
-            $lastNumber = (int) $matches[1];
+        $maxNumber = 0;
+        foreach ($existingIds as $existingId) {
+            if (is_string($existingId) && preg_match('/^'.preg_quote($prefix, '/').'(\d+)$/', $existingId, $matches)) {
+                $num = (int) $matches[1];
+                if ($num > $maxNumber) {
+                    $maxNumber = $num;
+                }
+            }
         }
 
-        $nextNumber = $lastNumber + 1;
+        $nextNumber = $maxNumber + 1;
 
         return "{$prefix}{$nextNumber}";
     }

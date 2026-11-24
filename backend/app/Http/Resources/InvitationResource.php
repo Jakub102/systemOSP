@@ -12,7 +12,7 @@ class InvitationResource extends JsonResource
         return [
             'id' => $this->id,
             'email' => $this->email,
-            'expires_at' => $this->expires_at,
+            'expires_at' => $this->expires_at?->toIso8601String(),
         ];
     }
 }

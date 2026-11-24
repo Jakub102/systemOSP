@@ -3,33 +3,42 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Requests\Api\Auth\RegisterRequest;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\{Hash, DB};
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Validation\ValidationException;
-use App\Models\{Account, User, Invitation};
 use App\Mail\UserRegisteredMail;
+use App\Models\Account;
+use App\Models\Invitation;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class RegisterController
 {
     public function __invoke(RegisterRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $invitation = Invitation::where('token', $data['token'])->first();
+        $tokenHash = hash('sha256', $data['token']);
 
-        if (!$invitation || !$invitation->isValid()) {
-            throw ValidationException::withMessages(['token' =>  [__('auth.token')]]);
-        }
+        $user = DB::transaction(function () use ($data, $tokenHash): User {
+            $invitation = Invitation::where('token', $tokenHash)
+                ->lockForUpdate()
+                ->first();
 
-        if (Account::where('email', $invitation->email)->exists()) {
-            throw ValidationException::withMessages(['email' =>  [__('auth.email')]]);
-        }
+            if (!$invitation || !$invitation->isValid()) {
+                throw ValidationException::withMessages(['token' => [__('auth.token')]]);
+            }
 
-        $user = null;
+            $email = Str::lower(trim($invitation->email));
 
-        DB::transaction(function () use ($data, $invitation, &$user) {
+            if (Account::where('email', $email)->exists()) {
+                throw ValidationException::withMessages(['email' => [__('auth.email')]]);
+            }
+
             $account = Account::create([
-                'email' => $invitation->email,
+                'email' => $email,
                 'password' => Hash::make($data['password']),
             ]);
 
@@ -46,16 +55,15 @@ class RegisterController
 
             $user->roles()->attach($invitation->role_id);
             $invitation->update(['used_at' => now()]);
+
+            return $user->load('account');
         });
 
-        if ($user) {
-            rescue(
-                fn () => Mail::to($user->account->email)->send(new UserRegisteredMail($user->first_name)),
-                fn (\Throwable $e) => \Illuminate\Support\Facades\Log::error('Błąd wysyłki maila po rejestracji: ' . $e->getMessage())
-            );
-        }
+        rescue(
+            fn () => Mail::to($user->account->email)->send(new UserRegisteredMail($user->first_name)),
+            fn (\Throwable $e) => Log::error('Błąd wysyłki maila po rejestracji: '.$e->getMessage())
+        );
 
         return response()->json(['message' => 'Konto zostało utworzone.'], 201);
     }
 }
-

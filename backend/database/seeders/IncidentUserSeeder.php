@@ -12,12 +12,12 @@ class IncidentUserSeeder extends Seeder
     {
         $now = Carbon::now();
 
-        // Przypisanie użytkowników do incydentu INC-1005 (ID 5)
+        // Przypisanie użytkowników do incydentu INC-1005 (ID 5) - na miejscu / w remizie
         DB::table('incident_user')->insert([
             [
                 'incident_id' => 5, 
                 'user_id' => 3, // Dowódca (Piotr Wiśniewski)
-                'attendance_status' => 'end',
+                'attendance_status' => 'on_scene',
                 'confirmed_latitude' => 54.47502, 
                 'confirmed_longitude' => 18.51505, 
                 'confirmed_at' => $now->copy()->subMinutes(3),
@@ -27,7 +27,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 5, 
                 'user_id' => 2, // Strażak (Adam Nowak)
-                'attendance_status' => 'end',
+                'attendance_status' => 'on_scene',
                 'confirmed_latitude' => 54.47510,
                 'confirmed_longitude' => 18.51490,
                 'confirmed_at' => $now->copy()->subMinutes(4),
@@ -37,7 +37,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 5, 
                 'user_id' => 4, // Strażak (Michał Wójcik)
-                'attendance_status' => 'end',
+                'attendance_status' => 'on_scene',
                 'confirmed_latitude' => 54.47490,
                 'confirmed_longitude' => 18.51510,
                 'confirmed_at' => $now->copy()->subMinutes(2),
@@ -62,7 +62,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 6, 
                 'user_id' => 3, // Dowódca 1
-                'attendance_status' => 'end',
+                'attendance_status' => 'on_scene',
                 'confirmed_latitude' => 54.52205, 
                 'confirmed_longitude' => 18.52505, 
                 'confirmed_at' => $now->copy()->subSeconds(45),
@@ -72,7 +72,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 6, 
                 'user_id' => 2, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'on_scene',
                 'confirmed_latitude' => 54.52195, 
                 'confirmed_longitude' => 18.52495, 
                 'confirmed_at' => $now->copy()->subSeconds(30),
@@ -82,7 +82,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 6, 
                 'user_id' => 4, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'on_scene',
                 'confirmed_latitude' => 54.52210, 
                 'confirmed_longitude' => 18.52510, 
                 'confirmed_at' => $now->copy()->subSeconds(25),
@@ -92,7 +92,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 6, 
                 'user_id' => 5, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'on_scene',
                 'confirmed_latitude' => 54.52200, 
                 'confirmed_longitude' => 18.52520, 
                 'confirmed_at' => $now->copy()->subSeconds(15),
@@ -102,7 +102,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 6, 
                 'user_id' => 6, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'on_scene',
                 'confirmed_latitude' => 54.52190, 
                 'confirmed_longitude' => 18.52490, 
                 'confirmed_at' => $now->copy()->subSeconds(10),
@@ -112,7 +112,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 6, 
                 'user_id' => 7, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'on_scene',
                 'confirmed_latitude' => 54.52200, 
                 'confirmed_longitude' => 18.52500, 
                 'confirmed_at' => $now->copy()->subSeconds(5),
@@ -126,7 +126,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 7, 
                 'user_id' => 12, // Dowódca 2
-                'attendance_status' => 'end',
+                'attendance_status' => 'accepted',
                 'confirmed_latitude' => 54.51000, 
                 'confirmed_longitude' => 18.51000, 
                 'confirmed_at' => $now->copy()->subSeconds(10),
@@ -136,7 +136,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 7, 
                 'user_id' => 8, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'accepted',
                 'confirmed_latitude' => 54.53000, 
                 'confirmed_longitude' => 18.54000, 
                 'confirmed_at' => $now->copy()->subSeconds(20),
@@ -146,7 +146,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 7, 
                 'user_id' => 9, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'accepted',
                 'confirmed_latitude' => 54.52500, 
                 'confirmed_longitude' => 18.50000, 
                 'confirmed_at' => $now->copy()->subSeconds(15),
@@ -156,7 +156,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 7, 
                 'user_id' => 10, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'accepted',
                 'confirmed_latitude' => 54.51500, 
                 'confirmed_longitude' => 18.53000, 
                 'confirmed_at' => $now->copy()->subSeconds(25),
@@ -166,7 +166,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 7, 
                 'user_id' => 11, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'accepted',
                 'confirmed_latitude' => 54.53500, 
                 'confirmed_longitude' => 18.51500, 
                 'confirmed_at' => $now->copy()->subSeconds(5),
@@ -176,7 +176,7 @@ class IncidentUserSeeder extends Seeder
             [
                 'incident_id' => 7, 
                 'user_id' => 13, // Strażak
-                'attendance_status' => 'end',
+                'attendance_status' => 'accepted',
                 'confirmed_latitude' => 54.51200, 
                 'confirmed_longitude' => 18.52500, 
                 'confirmed_at' => $now->copy()->subSeconds(15),

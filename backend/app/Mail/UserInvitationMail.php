@@ -13,7 +13,10 @@ class UserInvitationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Invitation $invitation) {}
+    public function __construct(
+        public Invitation $invitation,
+        public string $plainToken,
+    ) {}
 
     public function envelope(): Envelope
     {
@@ -24,13 +27,19 @@ class UserInvitationMail extends Mailable
 
     public function content(): Content
     {
-        $registrationUrl = config('app.frontend_url', config('app.url')) . '/register?token=' . $this->invitation->token;
+        $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
+        $registrationUrl = $frontendUrl.'/register?token='.urlencode($this->plainToken);
+        $displayTimezone = (string) config('app.display_timezone', 'Europe/Warsaw');
 
         return new Content(
             view: 'emails.invitation',
             with: [
                 'url' => $registrationUrl,
                 'firehouse' => $this->invitation->firehouse->name,
+                'expiresAtFormatted' => $this->invitation->expires_at
+                    ->copy()
+                    ->timezone($displayTimezone)
+                    ->format('d.m.Y H:i'),
             ],
         );
     }

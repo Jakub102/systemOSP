@@ -21,6 +21,8 @@ class IncidentResource extends JsonResource
             'longitude' => $this->longitude,
             'status' => $this->status,
             'raw_payload' => $this->raw_payload,
+            'fcm_sent_count' => $this->fcm_sent_count ?? 0,
+            'fcm_dispatched_at' => $this->fcm_dispatched_at?->toIso8601String(),
             'users' => UserResource::collection($this->whenLoaded('users')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

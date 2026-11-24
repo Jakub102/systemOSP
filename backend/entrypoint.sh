@@ -1,15 +1,23 @@
 #!/bin/sh
+set -e
 
-echo "Checking and resolving Composer dependencies... (this may take a few minutes)"
-if [ -d vendor ]; then
-    composer install --no-interaction --quiet --ignore-platform-reqs
-else
-    composer install --no-interaction --quiet
+IS_PROD="false"
+if [ "$APP_ENV" = "production" ]; then
+    IS_PROD="true"
 fi
 
-if ! grep -q "APP_KEY=base64:" .env || [ -z "$(grep APP_KEY .env | cut -d= -f2)" ]; then
-    echo "Generating APP_KEY..."
-    php artisan key:generate
+# W środowisku deweloperskim doinstalowujemy zależności tylko gdy brakuje vendor/autoload.php
+if [ "$IS_PROD" = "false" ] && [ ! -f vendor/autoload.php ]; then
+    echo "Installing Composer dependencies..."
+    composer install --no-interaction --prefer-dist
+fi
+
+# Generowanie APP_KEY tylko w środowisku lokalnym (na produkcji APP_KEY musi pochodzić ze zmiennych środowiskowych)
+if [ "$IS_PROD" = "false" ] && [ -f .env ]; then
+    if ! grep -q "^APP_KEY=base64:" .env; then
+        echo "Generating APP_KEY..."
+        php artisan key:generate --force
+    fi
 fi
 
 echo "Waiting for MySQL database to start..."
@@ -23,8 +31,21 @@ echo "Database connection established successfully!"
 echo "Running database migrations..."
 php artisan migrate --force
 
-echo "Seeding database with test data (if empty)..."
-php artisan db:seed --force
+# Słownik ról jest idempotentny i bezpieczny w każdym środowisku
+echo "Syncing roles dictionary..."
+php artisan db:seed --class=RolesSeeder --force
 
-echo "Everything is ready! Starting Laravel server..."
+# Dane demonstracyjne (konta testowe z password123) ładujemy WYŁĄCZNIE w dev lub przy jawnym SEED_DEMO_DATA=true
+if [ "$IS_PROD" = "false" ] && [ "${SEED_DEMO_DATA:-true}" = "true" ]; then
+    echo "Seeding demo data (if database is empty)..."
+    php artisan db:seed --force
+fi
+
+if [ "$IS_PROD" = "true" ]; then
+    echo "Caching Laravel config and routes for production..."
+    php artisan config:cache
+    php artisan route:cache
+fi
+
+echo "Everything is ready! Starting Laravel backend..."
 exec "$@"

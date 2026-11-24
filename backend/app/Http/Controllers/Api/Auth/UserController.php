@@ -37,6 +37,12 @@ class UserController
         $account = $request->user()->loadMissing(['user.roles', 'user.firehouse']);
         $user = $account->user;
 
+        if (!$user) {
+            return response()->json([
+                'message' => 'Nie znaleziono profilu strażaka przypisanego do konta.',
+            ], 404);
+        }
+
         $user->update([
             'readiness_status' => $validated['readiness_status'],
         ]);
