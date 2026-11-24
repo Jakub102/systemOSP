@@ -15,14 +15,7 @@ class FcmService
 
     public function sendIncidentAlert(Incident $incident): ?array
     {
-        $categoryNames = [
-            'F' => 'Pożar',
-            'LT' => 'Miejscowe zagrożenie',
-            'A' => 'Wypadek',
-            'M' => 'Zdarzenie medyczne',
-        ];
-
-        $categoryName = $categoryNames[$incident->main_category] ?? 'Zdarzenie';
+        $categoryName = Incident::CATEGORY_LABELS[$incident->main_category] ?? 'Zdarzenie';
 
         $title = $incident->sub_category 
             ? "ALARM: {$categoryName} - {$incident->sub_category}" 

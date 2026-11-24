@@ -10,6 +10,18 @@ class Incident extends Model
 {
     use HasFactory;
 
+    public const MAIN_CATEGORIES = ['F', 'LT', 'A', 'M', 'FA'];
+
+    public const CATEGORY_LABELS = [
+        'F'  => 'Pożar',
+        'LT' => 'Miejscowe zagrożenie',
+        'A'  => 'Wypadek',
+        'M'  => 'Zdarzenie medyczne',
+        'FA' => 'Alarm fałszywy',
+    ];
+
+    public const STATUSES = ['ACTIVE', 'END'];
+
     protected $fillable = [
         'external_id',
         'main_category',
