@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invitation extends Model
 {
@@ -26,7 +27,17 @@ class Invitation extends Model
 
     public function isValid(): bool
     {
-        return is_null($this->used_at) && $this->expires_at->isFuture();
+        return !$this->isUsed() && $this->expires_at->isFuture();
+    }
+
+    public function isUsed(): bool
+    {
+        return !is_null($this->used_at);
+    }
+
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class);
     }
 
     public function role(): BelongsTo

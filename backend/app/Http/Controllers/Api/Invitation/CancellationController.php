@@ -18,7 +18,7 @@ class CancellationController
             ], 403);
         }
 
-        if ($invitation->used_at !== null) {
+        if ($invitation->isUsed()) {
             return response()->json([
                 'message' => 'Nie można anulować zaproszenia, które zostało już wykorzystane.',
             ], 422);

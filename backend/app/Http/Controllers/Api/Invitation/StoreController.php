@@ -25,7 +25,7 @@ class StoreController
             ], 403);
         }
 
-        if ($invitation->exists && $invitation->used_at !== null) {
+        if ($invitation->exists && $invitation->isUsed()) {
             return response()->json([
                 'message' => 'To zaproszenie zostało już wykorzystane.',
             ], 422);
