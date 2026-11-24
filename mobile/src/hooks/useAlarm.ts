@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { sendAlarmResponse, cancelAlarmNotification } from "../services/AlarmService";
+import { startTracking, stopTracking } from "../services/LocationService";
 import { AlarmData } from "../types";
 
 export const ALARM_STATUS = {
@@ -46,8 +47,14 @@ export const useAlarm = (
     setStatus(ALARM_STATUS.PENDING);
     setElapsed(0);
 
+    // Czas liczymy od znacznika, a nie przez dodawanie sekund. Android
+    // wstrzymuje wątek JavaScriptu przy zgaszonym ekranie, więc zliczanie
+    // tyknięć rozjechałoby się o cały czas blokady i strażak dostałby
+    // więcej czasu na odpowiedź, niż przewiduje zgłoszenie.
+    const startedAt = Date.now();
+
     timerRef.current = setInterval(() => {
-      setElapsed((prev) => prev + 1);
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
     }, 1000);
 
     return () => {
@@ -88,6 +95,14 @@ export const useAlarm = (
 
         const newStatus =
           decision === "going" ? ALARM_STATUS.GOING : ALARM_STATUS.NOT_GOING;
+
+        // Od potwierdzenia wyjazdu telefon nadaje pozycje do remizy,
+        // a odmowa konczy ewentualne wczesniejsze sledzenie.
+        if (newStatus === ALARM_STATUS.GOING) {
+          startTracking(alarmData.alarmId).catch(() => {});
+        } else {
+          stopTracking().catch(() => {});
+        }
 
         setStatus(newStatus);
         onRespond?.(newStatus);

@@ -2,7 +2,8 @@ import { NativeModules, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import type { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import { api } from './api';
+import { stopTracking } from './LocationService';
 import { subHours, subDays } from 'date-fns';
 import type {
   AlarmData,
@@ -48,49 +49,9 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? '';
-
-export const IS_MOCK_API = !API_BASE || API_BASE.includes('your-osp-backend');
-
-const api = axios.create({
-  baseURL: API_BASE,
-  timeout: 8000,
-});
-
-let onUnauthorizedCallback: (() => void) | null = null;
-export const setUnauthorizedHandler = (handler: () => void) => {
-  onUnauthorizedCallback = handler;
-};
-
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('authToken');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => response,
-  (error: unknown) => {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 401) {
-        AsyncStorage.removeItem('authToken').catch(() => {});
-        onUnauthorizedCallback?.();
-      }
-      let customMessage = 'Wystąpił nieznany błąd';
-      if (error.code === 'ECONNABORTED') {
-        customMessage = 'Przekroczono czas połączenia z serwerem';
-      } else if (!error.response) {
-        customMessage = 'Brak połączenia z serwerem';
-      } else {
-        customMessage =
-          (error.response.data as { message?: string })?.message ??
-          `Błąd serwera: ${error.response.status}`;
-      }
-      (error as typeof error & { customMessage: string }).customMessage = customMessage;
-    }
-    return Promise.reject(error);
-  },
-);
+// Klient HTTP i tryb mock mieszkaja teraz w api.ts. Reeksport zostawiamy,
+// zeby ekrany importujace je z AlarmService dzialaly bez zmian.
+export { IS_MOCK_API, setUnauthorizedHandler } from './api';
 
 const VIBRATION_PATTERN = [0, 800, 200, 800, 200, 1000];
 
@@ -191,7 +152,23 @@ const alarmToPayload = (alarm: AlarmData): Record<string, string> => ({
   responseDeadlineMinutes: String(alarm.responseDeadlineMinutes ?? 3),
 });
 
-export const showAlarmNotification = async (alarm: AlarmData): Promise<void> => {
+export const showAlarmNotification = async (
+  alarm: AlarmData,
+  delaySeconds = 0,
+): Promise<void> => {
+  // Kanal podaje sie w triggerze. Przy trigger: null Android publikuje
+  // powiadomienie na kanale domyslnym, czyli bez syreny, bez wlasnej
+  // wibracji i bez obejscia trybu Nie przeszkadzac.
+  const trigger: Notifications.NotificationTriggerInput =
+    delaySeconds > 0
+      ? {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: delaySeconds,
+          repeats: false,
+          channelId: ALARM_CHANNEL_ID,
+        }
+      : { channelId: ALARM_CHANNEL_ID };
+
   await Notifications.scheduleNotificationAsync({
     // alarmId jako identyfikator powiadomienia - ten sam alarm nie zdubluje sie
     // w belce i da sie je potem skasowac po odpowiedzi.
@@ -207,7 +184,7 @@ export const showAlarmNotification = async (alarm: AlarmData): Promise<void> => 
       categoryIdentifier: ALARM_CATEGORY_ID,
       autoDismiss: true,
     },
-    trigger: null,
+    trigger,
   });
 };
 
@@ -411,6 +388,8 @@ export const logout = async (): Promise<void> => {
     if (token) await api.post('/logout').catch(() => {});
     // po wylogowaniu telefon nie powinien dostawac alarmow
     await messagingFn?.().unsubscribeFromTopic(ALARM_TOPIC).catch(() => {});
+    // Wylogowany telefon nie ma po co nadawac pozycji.
+    await stopTracking().catch(() => {});
   } finally {
     await AsyncStorage.multiRemove([
       'authToken',

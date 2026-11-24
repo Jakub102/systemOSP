@@ -22,7 +22,7 @@ export const useAlarmSound = (isActive: boolean) => {
       try {
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true, // alarm ma przebić przełącznik ciszy
-          staysActiveInBackground: false,
+          staysActiveInBackground: true, // alarm nie może milknąć po zgaszeniu ekranu
           shouldDuckAndroid: false,
           interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
           interruptionModeIOS: InterruptionModeIOS.DoNotMix,
