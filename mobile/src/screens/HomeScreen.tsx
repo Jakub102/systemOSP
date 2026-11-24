@@ -8,18 +8,41 @@ import {
   Alert,
   Animated,
   Image,
+  AppState,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Palette } from "../constants/theme";
 import { useTheme } from "../hooks/useTheme";
-import { fetchMe, logout } from "../services/AlarmService";
+import {
+  fetchMe,
+  logout,
+  showAlarmNotification,
+} from "../services/AlarmService";
+import {
+  getTrackingPermission,
+  requestTrackingPermission,
+} from "../services/LocationService";
+import type { TrackingPermission } from "../services/LocationService";
 import { StackScreenProps } from "@react-navigation/stack";
-import { RootStackParamList } from "../types";
+import { AlarmData, RootStackParamList } from "../types";
 
 type Props = StackScreenProps<RootStackParamList, "Home">;
 
 type Styles = ReturnType<typeof makeStyles>;
+
+// Zgloszenie uzywane przez oba przyciski testowe w trybie deweloperskim.
+const TEST_ALARM: AlarmData = {
+  alarmId: "TEST-123",
+  incidentType: "POŻAR BUDYNKU",
+  address: "ul. Strażacka 15, Florianów",
+  priority: "ALARMOWY",
+  notes: "Możliwe osoby w budynku",
+  stationLat: 52.4006,
+  stationLng: 16.9229,
+  responseDeadlineMinutes: 3,
+};
 
 
 function Toggle({
@@ -59,6 +82,8 @@ export default function HomeScreen({ navigation }: Props) {
   const styles = useMemo(() => makeStyles(c), [c]);
   const [userName, setUserName] = useState("");
   const [available, setAvailable] = useState(true);
+  const [locationPermission, setLocationPermission] =
+    useState<TrackingPermission | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem("userName")
@@ -77,6 +102,52 @@ export default function HomeScreen({ navigation }: Props) {
         if (user?.full_name) setUserName(user.full_name.toUpperCase());
       })
       .catch(() => {});
+  }, []);
+
+  // Zgody pytamy tutaj, a nie dopiero przy alarmie. Strażak nie powinien
+  // szukać ustawień systemowych w chwili, gdy wyje syrena.
+  const refreshLocationPermission = useCallback(() => {
+    getTrackingPermission()
+      .then(setLocationPermission)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshLocationPermission();
+
+    // Powrót z ustawień systemowych nie zmienia ekranu, więc stan zgody
+    // sprawdzamy ponownie przy każdym ożywieniu aplikacji.
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") refreshLocationPermission();
+    });
+
+    return () => subscription.remove();
+  }, [refreshLocationPermission]);
+
+  const handleLocationPermission = useCallback(async () => {
+    let result: TrackingPermission = "denied";
+    try {
+      result = await requestTrackingPermission();
+    } catch {
+      result = "denied";
+    }
+
+    setLocationPermission(result);
+    if (result === "granted") return;
+
+    Alert.alert(
+      "Zgoda na lokalizację",
+      'Aby remiza widziała, że jesteś w drodze, ustaw dostęp do lokalizacji na "Zezwalaj zawsze".',
+      [
+        { text: "Anuluj", style: "cancel" },
+        {
+          text: "Otwórz ustawienia",
+          onPress: () => {
+            Linking.openSettings().catch(() => {});
+          },
+        },
+      ],
+    );
   }, []);
 
   const handleAvailableChange = (value: boolean) => {
@@ -99,18 +170,20 @@ export default function HomeScreen({ navigation }: Props) {
   }, [navigation]);
 
   const testAlarmPopup = () => {
-    navigation.navigate("AlarmScreen", {
-      alarmData: {
-        alarmId: "TEST-123",
-        incidentType: "POŻAR BUDYNKU",
-        address: "ul. Strażacka 15, Florianów",
-        priority: "ALARMOWY",
-        notes: "Możliwe osoby w budynku",
-        stationLat: 52.4006,
-        stationLng: 16.9229,
-        responseDeadlineMinutes: 3,
-      },
-    });
+    navigation.navigate("AlarmScreen", { alarmData: TEST_ALARM });
+  };
+
+  // Jedyny sposob, zeby sprawdzic kanal alarmowy bez dzialajacego serwera.
+  // Powiadomienie pojawia sie z opoznieniem, zeby zdazyc zablokowac ekran.
+  const testAlarmNotification = () => {
+    showAlarmNotification(TEST_ALARM, 10).catch((e) =>
+      console.warn("Nie udalo sie zaplanowac powiadomienia testowego:", e),
+    );
+
+    Alert.alert(
+      "Powiadomienie testowe",
+      "Zablokuj ekran. Alarm pojawi się za 10 sekund.",
+    );
   };
 
   return (
@@ -148,6 +221,22 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
           </View>
 
+          {locationPermission !== null && locationPermission !== "granted" && (
+            <TouchableOpacity
+              style={styles.warnCard}
+              onPress={handleLocationPermission}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.warnTitle}>
+                BRAK ZGODY NA LOKALIZACJĘ W TLE
+              </Text>
+              <Text style={styles.warnText}>
+                Bez niej remiza nie zobaczy, że jedziesz. Dotknij, aby nadać
+                zgodę.
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.rowCard}
             onPress={() => navigation.navigate("History")}
@@ -164,6 +253,18 @@ export default function HomeScreen({ navigation }: Props) {
               activeOpacity={0.85}
             >
               <Text style={styles.testBtnText}>URUCHOM ALARM TESTOWY</Text>
+            </TouchableOpacity>
+          )}
+
+          {__DEV__ && (
+            <TouchableOpacity
+              style={styles.testBtn}
+              onPress={testAlarmNotification}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.testBtnText}>
+                POWIADOMIENIE TESTOWE ZA 10 S
+              </Text>
             </TouchableOpacity>
           )}
 
@@ -274,6 +375,27 @@ const makeStyles = (c: Palette) =>
   rowTitle: { flex: 1, color: c.textLight, fontSize: 16, fontWeight: "900" },
   rowSub: { color: c.textDim, fontSize: 12, marginTop: 2, fontWeight: "600" },
   chevron: { color: c.textDim, fontSize: 26, fontWeight: "300" },
+
+  warnCard: {
+    backgroundColor: c.errorBg,
+    borderRadius: 0,
+    borderWidth: 4,
+    borderColor: c.red,
+    padding: 16,
+    ...CARD_SHADOW,
+  },
+  warnTitle: {
+    color: c.red,
+    fontSize: 14,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
+  warnText: {
+    color: c.textLight,
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 6,
+  },
 
   testBtn: {
     paddingVertical: 18,

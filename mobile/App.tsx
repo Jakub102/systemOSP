@@ -27,6 +27,10 @@ import AlarmConfirmScreen from "./src/screens/AlarmConfirmScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import LoginScreen from "./src/screens/LoginScreen";
+import {
+  startTracking,
+  stopTracking,
+} from "./src/services/LocationService";
 import { AlarmData, RootStackParamList } from "./src/types";
 
 registerBackgroundHandler();
@@ -92,6 +96,13 @@ export default function App() {
       if (action === ACTION_GOING || action === ACTION_NOT_GOING) {
         const status = action === ACTION_GOING ? "going" : "not_going";
         cancelAlarmNotification(alarmData.alarmId);
+
+        // Decyzja z powiadomienia dziala tak samo jak przycisk w aplikacji.
+        if (action === ACTION_GOING) {
+          startTracking(alarmData.alarmId).catch(() => {});
+        } else {
+          stopTracking().catch(() => {});
+        }
 
         sendAlarmResponse(alarmData.alarmId, status)
           .then(() => {
