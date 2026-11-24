@@ -52,6 +52,14 @@ class RolesSeeder extends Seeder
                 'name' => 'captain',
                 'display_name' => 'Dowódca',
             ],
+            [
+                'name' => 'driver',
+                'display_name' => 'Kierowca',
+            ],
+            [
+                'name' => 'lifeguard',
+                'display_name' => 'Ratownik',
+            ],
         ]);
     }
 }

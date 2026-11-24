@@ -21,7 +21,7 @@ return new class extends Migration
         $table->string('last_name', 30);
         $table->string('phone_number', 15)->nullable();
         $table->boolean('is_active')->default(true);
-        $table->enum('status', ['READY','IN ACTION', 'UNAVAILABLE'])->default('READY');
+        $table->enum('readiness_status', ['active', 'in_active'])->default('active');
         
         $table->timestamp('last_login')->nullable();
         $table->timestamps();

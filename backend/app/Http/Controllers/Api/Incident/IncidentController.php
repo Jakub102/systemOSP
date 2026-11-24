@@ -12,7 +12,7 @@ class IncidentController
 {
     public function index(): AnonymousResourceCollection
     {
-        $incidents = Incident::with('users')->latest()->paginate(20);
+        $incidents = Incident::with(['users.roles', 'users.firehouse'])->latest()->paginate(20);
 
         return IncidentResource::collection($incidents);
     }
@@ -28,7 +28,7 @@ class IncidentController
 
     public function show(Incident $incident): IncidentResource
     {
-        return new IncidentResource($incident->load('users'));
+        return new IncidentResource($incident->load(['users.roles', 'users.firehouse']));
     }
 
     public function update(IncidentRequest $request, Incident $incident): IncidentResource

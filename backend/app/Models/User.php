@@ -19,7 +19,7 @@ class User extends Model
         'last_name',
         'phone_number',
         'is_active',
-        'status',
+        'readiness_status',
         'last_login',
     ];
 

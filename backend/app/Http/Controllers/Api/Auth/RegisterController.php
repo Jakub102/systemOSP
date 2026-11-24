@@ -41,7 +41,7 @@ class RegisterController
                 'phone_number' => $data['phone_number'],
                 'firehouse_id' => $invitation->firehouse_id,
                 'is_active' => true,
-                'status' => 'READY',
+                'readiness_status' => 'active',
             ]);
 
             $user->roles()->attach($invitation->role_id);

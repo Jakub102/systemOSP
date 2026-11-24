@@ -15,7 +15,7 @@ class UserResource extends JsonResource
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
             'phone_number' => $this->phone_number,
-            'status' => $this->status,
+            'readiness_status' => $this->readiness_status,
             'firehouse' => $this->firehouse, 
             'roles' => $this->roles->pluck('display_name'),
             'full_name' => "{$this->first_name} {$this->last_name}",
