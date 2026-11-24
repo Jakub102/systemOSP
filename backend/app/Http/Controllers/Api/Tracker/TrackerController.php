@@ -53,6 +53,8 @@ class TrackerController
                     'sub_category' => $incident->sub_category,
                     'description' => $incident->description,
                     'address' => $incident->address,
+                    'latitude' => $incident->latitude,
+                    'longitude' => $incident->longitude,
                     'incident_time' => $incident->incident_time?->toIso8601String(),
                     'status' => $incident->status,
                     'my_attendance_status' => $pivot?->attendance_status ?? AttendanceStatus::PENDING->value,
@@ -69,7 +71,7 @@ class TrackerController
      */
     public function respond(RespondIncidentRequest $request, Incident $incident): JsonResponse
     {
-        $account = $request->user()->loadMissing(['user.roles', 'user.firehouse']);
+        $account = $request->user()->loadMissing('user.firehouse');
         $user = $account?->user;
 
         if (!$user) {
@@ -102,7 +104,7 @@ class TrackerController
             );
 
             return response()->json(
-                $this->formatFirefighterResponse($user, AttendanceStatus::REJECTED->value, null, null, true),
+                $this->formatTrackingResponse(AttendanceStatus::REJECTED->value, null, null, true),
                 200
             );
         }
@@ -135,7 +137,7 @@ class TrackerController
         );
 
         return response()->json(
-            $this->formatFirefighterResponse($user, $attendanceStatus->value, $userLat, $userLng, $hasArrived),
+            $this->formatTrackingResponse($attendanceStatus->value, $userLat, $userLng, $hasArrived),
             200
         );
     }
@@ -146,7 +148,7 @@ class TrackerController
      */
     public function update(UpdateLocationRequest $request, Incident $incident): JsonResponse
     {
-        $account = $request->user()->loadMissing(['user.roles', 'user.firehouse']);
+        $account = $request->user()->loadMissing('user.firehouse');
         $user = $account?->user;
 
         if (!$user) {
@@ -176,8 +178,7 @@ class TrackerController
 
         if ($existingPivot->attendance_status === AttendanceStatus::ON_SCENE->value) {
             return response()->json(
-                $this->formatFirefighterResponse(
-                    $user,
+                $this->formatTrackingResponse(
                     AttendanceStatus::ON_SCENE->value,
                     $existingPivot->confirmed_latitude,
                     $existingPivot->confirmed_longitude,
@@ -189,7 +190,7 @@ class TrackerController
 
         if ($existingPivot->attendance_status === AttendanceStatus::REJECTED->value) {
             return response()->json(
-                $this->formatFirefighterResponse($user, AttendanceStatus::REJECTED->value, null, null, true),
+                $this->formatTrackingResponse(AttendanceStatus::REJECTED->value, null, null, true),
                 200
             );
         }
@@ -219,14 +220,14 @@ class TrackerController
         ]);
 
         return response()->json(
-            $this->formatFirefighterResponse($user, $attendanceStatus->value, $userLat, $userLng, $hasArrived),
+            $this->formatTrackingResponse($attendanceStatus->value, $userLat, $userLng, $hasArrived),
             200
         );
     }
 
     /**
      * Zwraca dane zdarzenia (id, external_id, kategorie, adres, współrzędne)
-     * oraz listę strażaków, którzy zaakceptowali udział (imię i nazwisko, role, lokalizacja, status).
+     * oraz listę strażaków, którzy zaakceptowali udział (imię i nazwisko, role, lokalizacja, status, czas ostatniego pingu).
      */
     public function show(Incident $incident): JsonResponse
     {
@@ -245,6 +246,7 @@ class TrackerController
                 'attendance_status' => $user->pivot->attendance_status,
                 'latitude' => $user->pivot->confirmed_latitude !== null ? (float) $user->pivot->confirmed_latitude : null,
                 'longitude' => $user->pivot->confirmed_longitude !== null ? (float) $user->pivot->confirmed_longitude : null,
+                'confirmed_at' => $user->pivot->confirmed_at?->toIso8601String(),
             ])
             ->values();
 
@@ -262,18 +264,13 @@ class TrackerController
         ], 200);
     }
 
-    private function formatFirefighterResponse(
-        User $user,
+    private function formatTrackingResponse(
         string $attendanceStatus,
         ?float $latitude,
         ?float $longitude,
         bool $shouldStopTracking
     ): array {
         return [
-            'first_name' => $user->first_name,
-            'last_name' => $user->last_name,
-            'full_name' => "{$user->first_name} {$user->last_name}",
-            'roles' => $user->roles->pluck('display_name')->values(),
             'attendance_status' => $attendanceStatus,
             'latitude' => $latitude,
             'longitude' => $longitude,

@@ -41,9 +41,7 @@ class UserController
     public function updateReadiness(UpdateReadinessRequest $request): JsonResponse
     {
         $validated = $request->validated();
-
-        $account = $request->user()->loadMissing(['user.roles', 'user.firehouse']);
-        $user = $account->user;
+        $user = $request->user()?->user;
 
         if (!$user) {
             return response()->json([
@@ -57,7 +55,7 @@ class UserController
 
         return response()->json([
             'message' => 'Zaktualizowano status gotowości.',
-            'user' => new UserResource($user),
+            'readiness_status' => $user->readiness_status,
         ], 200);
     }
 }

@@ -59,7 +59,7 @@ class AlarmController
             ]);
         }
 
-        $incident->refresh()->load(['users.roles', 'users.firehouse']);
+        $incident->refresh()->load('users.roles');
 
         return new IncidentResource($incident);
     }

@@ -64,7 +64,7 @@ class TrackerTest extends TestCase
 
         $incident = Incident::factory()->create(['status' => 'ACTIVE']);
 
-        // 1. Deklaracja udziału z daleka (>100m od remizy)
+        // 1. Deklaracja udziału z daleka (>100m od remizy) — lekki JSON bez redundantnych danych profilu
         $this->actingAs($firefighterAccount, 'sanctum')
             ->postJson("/api/incidents/{$incident->id}/respond", [
                 'attendance_status' => 'accepted',
@@ -73,7 +73,9 @@ class TrackerTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('attendance_status', 'accepted')
-            ->assertJsonPath('should_stop_tracking', false);
+            ->assertJsonPath('should_stop_tracking', false)
+            ->assertJsonMissingPath('first_name')
+            ->assertJsonMissingPath('roles');
 
         // 2. Aktualizacja GPS bliżej, wciąż w drodze
         $this->actingAs($firefighterAccount, 'sanctum')
@@ -83,14 +85,23 @@ class TrackerTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('attendance_status', 'accepted')
-            ->assertJsonPath('should_stop_tracking', false);
+            ->assertJsonPath('should_stop_tracking', false)
+            ->assertJsonMissingPath('first_name')
+            ->assertJsonMissingPath('roles');
 
-        // 3. System widzi strażaka na mapie
+        // 3. System widzi strażaka na mapie wraz z confirmed_at (świeżość sygnału GPS)
         $this->actingAs($systemAccount, 'sanctum')
             ->getJson("/api/incidents/{$incident->id}/location")
             ->assertOk()
             ->assertJsonCount(1, 'data.users')
-            ->assertJsonPath('data.users.0.attendance_status', 'accepted');
+            ->assertJsonPath('data.users.0.attendance_status', 'accepted')
+            ->assertJsonStructure(['data' => ['users' => [['first_name', 'last_name', 'full_name', 'roles', 'attendance_status', 'latitude', 'longitude', 'confirmed_at']]]]);
+
+        // 3b. Lista aktywnych alarmów dla strażaka zawiera współrzędne zdarzenia
+        $this->actingAs($firefighterAccount, 'sanctum')
+            ->getJson('/api/incidents/my')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [['id', 'latitude', 'longitude', 'my_attendance_status']]]);
 
         // 4. Strażak dociera w promień <= 100m od remizy -> automatyczne on_scene + stop tracking
         $this->actingAs($firefighterAccount, 'sanctum')

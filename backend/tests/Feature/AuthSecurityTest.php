@@ -34,7 +34,24 @@ class AuthSecurityTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonStructure(['token', 'user' => ['id', 'first_name', 'last_name', 'full_name']]);
+            ->assertJsonStructure([
+                'token',
+                'user' => ['id', 'first_name', 'last_name', 'full_name', 'roles', 'role_names', 'firehouse' => ['id', 'name', 'latitude', 'longitude']],
+            ])
+            ->assertJsonMissingPath('user.firehouse.street')
+            ->assertJsonMissingPath('user.firehouse.postal_code');
+    }
+
+    public function test_update_readiness_returns_slim_payload(): void
+    {
+        $account = Account::factory()->create();
+        User::factory()->create(['account_id' => $account->id, 'readiness_status' => 'active']);
+
+        $this->actingAs($account, 'sanctum')
+            ->patchJson('/api/me/readiness', ['readiness_status' => 'in_active'])
+            ->assertOk()
+            ->assertJsonPath('readiness_status', 'in_active')
+            ->assertJsonMissingPath('user');
     }
 
     public function test_deactivated_user_is_blocked_even_with_existing_sanctum_token_and_token_is_revoked(): void

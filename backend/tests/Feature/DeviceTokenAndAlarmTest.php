@@ -165,8 +165,13 @@ class DeviceTokenAndAlarmTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('data.status', 'ACTIVE')
-            ->assertJsonPath('data.raw_payload.source', 'SWD-PSP')
-            ->assertJsonPath('data.fcm_sent_count', 1);
+            ->assertJsonPath('data.fcm_sent_count', 1)
+            ->assertJsonPath('data.notified_users_count', 1)
+            ->assertJsonMissingPath('data.raw_payload')
+            ->assertJsonMissingPath('data.created_at')
+            ->assertJsonMissingPath('data.updated_at')
+            ->assertJsonMissingPath('data.users.0.phone_number')
+            ->assertJsonMissingPath('data.users.0.firehouse');
 
         // Wyłącznie tokeny gotowego, aktywnego strażaka
         $this->assertEqualsCanonicalizing(['token-ready-valid', 'token-ready-stale'], $capturedTokens);
@@ -178,8 +183,9 @@ class DeviceTokenAndAlarmTest extends TestCase
         $this->assertDatabaseMissing('fcm_tokens', ['token' => 'token-ready-stale']);
         $this->assertDatabaseHas('fcm_tokens', ['token' => 'token-ready-valid']);
 
-        // Incydent ma zapisane metadane FCM bez nadpisywania raw_payload
+        // Incydent ma zapisane metadane FCM w bazie bez nadpisywania raw_payload
         $incident = Incident::firstOrFail();
+        $this->assertSame(['source' => 'SWD-PSP'], $incident->raw_payload);
         $this->assertSame('projects/osp/messages/msg-1', $incident->fcm_message_id);
         $this->assertSame(1, $incident->fcm_sent_count);
         $this->assertNotNull($incident->fcm_dispatched_at);

@@ -42,8 +42,10 @@ class StoreController
 
         $invitation->save();
 
+        $invitation->loadMissing(['firehouse', 'role']);
+
         rescue(
-            fn () => Mail::to($invitation->email)->queue(new UserInvitationMail($invitation->loadMissing('firehouse'), $plainToken)),
+            fn () => Mail::to($invitation->email)->queue(new UserInvitationMail($invitation, $plainToken)),
             fn (\Throwable $e) => Log::error('Błąd kolejkowania maila z zaproszeniem: '.$e->getMessage())
         );
 

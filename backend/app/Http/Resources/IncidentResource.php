@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -20,12 +22,10 @@ class IncidentResource extends JsonResource
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'status' => $this->status,
-            'raw_payload' => $this->raw_payload,
             'fcm_sent_count' => $this->fcm_sent_count ?? 0,
             'fcm_dispatched_at' => $this->fcm_dispatched_at?->toIso8601String(),
-            'users' => UserResource::collection($this->whenLoaded('users')),
-            'created_at' => $this->created_at?->toIso8601String(),
-            'updated_at' => $this->updated_at?->toIso8601String(),
+            'notified_users_count' => $this->whenLoaded('users', fn () => $this->users->count()),
+            'users' => IncidentFirefighterResource::collection($this->whenLoaded('users')),
         ];
     }
 }

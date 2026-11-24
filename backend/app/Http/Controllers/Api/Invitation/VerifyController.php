@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Invitation;
 
 use App\Http\Resources\InvitationResource;
@@ -10,7 +12,9 @@ class VerifyController
 {
     public function __invoke(string $token): InvitationResource|JsonResponse
     {
-        $invitation = Invitation::where('token', hash('sha256', $token))->first();
+        $invitation = Invitation::with(['firehouse', 'role'])
+            ->where('token', hash('sha256', $token))
+            ->first();
 
         if (!$invitation || !$invitation->isValid()) {
             return response()->json([

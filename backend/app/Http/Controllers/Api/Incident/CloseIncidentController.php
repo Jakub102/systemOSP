@@ -23,6 +23,6 @@ class CloseIncidentController
             'status' => IncidentStatus::END->value,
         ]);
 
-        return new IncidentResource($incident->refresh()->load(['users.roles', 'users.firehouse']));
+        return new IncidentResource($incident->refresh()->load('users.roles'));
     }
 }

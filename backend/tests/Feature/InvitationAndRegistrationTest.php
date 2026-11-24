@@ -63,10 +63,12 @@ class InvitationAndRegistrationTest extends TestCase
         $this->getJson('/api/invitations/verify/'.$invitation->token)
             ->assertStatus(410);
 
-        // Plain token z maila działa poprawnie
+        // Plain token z maila działa poprawnie i zwraca kontekst jednostki oraz roli
         $this->getJson('/api/invitations/verify/'.$plainToken)
             ->assertOk()
-            ->assertJsonPath('data.email', 'nowy.strazak@osp.pl');
+            ->assertJsonPath('data.email', 'nowy.strazak@osp.pl')
+            ->assertJsonPath('data.firehouse', 'OSP Gdynia')
+            ->assertJsonPath('data.role', 'Strażak');
 
         // Rejestracja wykorzystuje token i blokuje ponowne użycie
         $this->postJson('/api/register', [

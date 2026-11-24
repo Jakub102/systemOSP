@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -13,6 +15,8 @@ class InvitationResource extends JsonResource
             'id' => $this->id,
             'email' => $this->email,
             'expires_at' => $this->expires_at?->toIso8601String(),
+            'firehouse' => $this->whenLoaded('firehouse', fn () => $this->firehouse?->name),
+            'role' => $this->whenLoaded('role', fn () => $this->role?->display_name),
         ];
     }
 }
