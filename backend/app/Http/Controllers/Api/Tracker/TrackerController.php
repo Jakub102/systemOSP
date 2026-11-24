@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Tracker;
 
+use App\Enums\AttendanceStatus;
+use App\Enums\IncidentStatus;
 use App\Http\Requests\Api\Incident\RespondIncidentRequest;
 use App\Http\Requests\Api\Incident\UpdateLocationRequest;
 use App\Models\Firehouse;
@@ -35,7 +39,7 @@ class TrackerController
         }
 
         $incidents = Incident::query()
-            ->where('status', 'ACTIVE')
+            ->where('status', IncidentStatus::ACTIVE->value)
             ->with(['users' => fn ($query) => $query->where('users.id', $user->id)])
             ->latest('incident_time')
             ->get()
@@ -51,7 +55,7 @@ class TrackerController
                     'address' => $incident->address,
                     'incident_time' => $incident->incident_time?->toIso8601String(),
                     'status' => $incident->status,
-                    'my_attendance_status' => $pivot?->attendance_status ?? 'pending',
+                    'my_attendance_status' => $pivot?->attendance_status ?? AttendanceStatus::PENDING->value,
                 ];
             });
 
@@ -75,7 +79,7 @@ class TrackerController
             ], 404);
         }
 
-        if ($incident->status !== 'ACTIVE') {
+        if ($incident->status !== IncidentStatus::ACTIVE->value) {
             return response()->json([
                 'message' => 'Zdarzenie zostało już zakończone.',
                 'should_stop_tracking' => true,
@@ -83,14 +87,14 @@ class TrackerController
         }
 
         $validated = $request->validated();
-        $attendanceStatus = $validated['attendance_status'];
+        $attendanceStatus = AttendanceStatus::from($validated['attendance_status']);
         $confirmedAt = now();
 
-        if ($attendanceStatus === 'rejected') {
+        if ($attendanceStatus === AttendanceStatus::REJECTED) {
             IncidentUser::updateOrCreate(
                 ['incident_id' => $incident->id, 'user_id' => $user->id],
                 [
-                    'attendance_status' => 'rejected',
+                    'attendance_status' => AttendanceStatus::REJECTED->value,
                     'confirmed_latitude' => null,
                     'confirmed_longitude' => null,
                     'confirmed_at' => $confirmedAt,
@@ -98,14 +102,14 @@ class TrackerController
             );
 
             return response()->json(
-                $this->formatFirefighterResponse($user, 'rejected', null, null, true),
+                $this->formatFirefighterResponse($user, AttendanceStatus::REJECTED->value, null, null, true),
                 200
             );
         }
 
         $userLat = isset($validated['latitude']) ? (float) $validated['latitude'] : null;
         $userLng = isset($validated['longitude']) ? (float) $validated['longitude'] : null;
-        $hasArrived = $attendanceStatus === 'on_scene';
+        $hasArrived = $attendanceStatus === AttendanceStatus::ON_SCENE;
 
         if ($userLat !== null && $userLng !== null) {
             $firehouse = $user->firehouse ?? Firehouse::first();
@@ -115,7 +119,7 @@ class TrackerController
 
                 if ($distanceMeters <= self::ARRIVAL_RADIUS_METERS) {
                     $hasArrived = true;
-                    $attendanceStatus = 'on_scene';
+                    $attendanceStatus = AttendanceStatus::ON_SCENE;
                 }
             }
         }
@@ -123,7 +127,7 @@ class TrackerController
         IncidentUser::updateOrCreate(
             ['incident_id' => $incident->id, 'user_id' => $user->id],
             [
-                'attendance_status' => $attendanceStatus,
+                'attendance_status' => $attendanceStatus->value,
                 'confirmed_latitude' => $userLat,
                 'confirmed_longitude' => $userLng,
                 'confirmed_at' => $confirmedAt,
@@ -131,7 +135,7 @@ class TrackerController
         );
 
         return response()->json(
-            $this->formatFirefighterResponse($user, $attendanceStatus, $userLat, $userLng, $hasArrived),
+            $this->formatFirefighterResponse($user, $attendanceStatus->value, $userLat, $userLng, $hasArrived),
             200
         );
     }
@@ -152,7 +156,7 @@ class TrackerController
             ], 404);
         }
 
-        if ($incident->status !== 'ACTIVE') {
+        if ($incident->status !== IncidentStatus::ACTIVE->value) {
             return response()->json([
                 'message' => 'Zdarzenie zostało już zakończone.',
                 'should_stop_tracking' => true,
@@ -163,18 +167,18 @@ class TrackerController
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$existingPivot || $existingPivot->attendance_status === 'pending') {
+        if (!$existingPivot || $existingPivot->attendance_status === AttendanceStatus::PENDING->value) {
             return response()->json([
                 'message' => 'Najpierw zadeklaruj udział w zdarzeniu, aby uruchomić śledzenie lokalizacji.',
                 'should_stop_tracking' => true,
             ], 409);
         }
 
-        if ($existingPivot->attendance_status === 'on_scene') {
+        if ($existingPivot->attendance_status === AttendanceStatus::ON_SCENE->value) {
             return response()->json(
                 $this->formatFirefighterResponse(
                     $user,
-                    'on_scene',
+                    AttendanceStatus::ON_SCENE->value,
                     $existingPivot->confirmed_latitude,
                     $existingPivot->confirmed_longitude,
                     true
@@ -183,9 +187,9 @@ class TrackerController
             );
         }
 
-        if ($existingPivot->attendance_status === 'rejected') {
+        if ($existingPivot->attendance_status === AttendanceStatus::REJECTED->value) {
             return response()->json(
-                $this->formatFirefighterResponse($user, 'rejected', null, null, true),
+                $this->formatFirefighterResponse($user, AttendanceStatus::REJECTED->value, null, null, true),
                 200
             );
         }
@@ -205,17 +209,17 @@ class TrackerController
 
         $distanceMeters = $firehouse->distanceInMetersTo($userLat, $userLng);
         $hasArrived = $distanceMeters <= self::ARRIVAL_RADIUS_METERS;
-        $attendanceStatus = $hasArrived ? 'on_scene' : 'accepted';
+        $attendanceStatus = $hasArrived ? AttendanceStatus::ON_SCENE : AttendanceStatus::ACCEPTED;
 
         $existingPivot->update([
-            'attendance_status' => $attendanceStatus,
+            'attendance_status' => $attendanceStatus->value,
             'confirmed_latitude' => $userLat,
             'confirmed_longitude' => $userLng,
             'confirmed_at' => now(),
         ]);
 
         return response()->json(
-            $this->formatFirefighterResponse($user, $attendanceStatus, $userLat, $userLng, $hasArrived),
+            $this->formatFirefighterResponse($user, $attendanceStatus->value, $userLat, $userLng, $hasArrived),
             200
         );
     }
@@ -227,7 +231,10 @@ class TrackerController
     public function show(Incident $incident): JsonResponse
     {
         $firefighters = $incident->users()
-            ->wherePivotIn('attendance_status', ['accepted', 'on_scene'])
+            ->wherePivotIn('attendance_status', [
+                AttendanceStatus::ACCEPTED->value,
+                AttendanceStatus::ON_SCENE->value,
+            ])
             ->with('roles')
             ->get()
             ->map(fn (User $user) => [

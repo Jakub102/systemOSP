@@ -87,4 +87,27 @@ class AuthSecurityTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
         $this->assertDatabaseMissing('fcm_tokens', ['id' => $fcm->id]);
     }
+
+    public function test_refresh_rotates_token_atomically_and_revokes_previous_token(): void
+    {
+        $account = Account::factory()->create();
+        User::factory()->create(['account_id' => $account->id, 'is_active' => true]);
+
+        $oldToken = $account->createToken('android-phone')->plainTextToken;
+
+        $response = $this->withToken($oldToken)
+            ->postJson('/api/auth/refresh');
+
+        $response->assertOk()
+            ->assertJsonStructure(['token', 'user' => ['id', 'full_name']]);
+
+        $newToken = $response->json('token');
+        $this->assertNotSame($oldToken, $newToken);
+        $this->assertDatabaseCount('personal_access_tokens', 1);
+
+        // Nowy token działa poprawnie
+        $this->withToken($newToken)
+            ->getJson('/api/me')
+            ->assertOk();
+    }
 }

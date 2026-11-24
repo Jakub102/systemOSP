@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\Auth\UserController;
 use App\Http\Controllers\Api\Device\DeviceTokenController;
 use App\Http\Controllers\Api\Incident\AlarmController;
+use App\Http\Controllers\Api\Incident\CloseIncidentController;
 use App\Http\Controllers\Api\Invitation\CancellationController as CancelInvitationController;
 use App\Http\Controllers\Api\Invitation\StoreController as StoreInvitationController;
 use App\Http\Controllers\Api\Invitation\VerifyController as VerifyInvitationController;
@@ -55,4 +56,13 @@ Route::middleware([
     Route::post('/incident/new', AlarmController::class)->middleware('throttle:5,1');
     Route::get('/incidents/{incident}/location', [TrackerController::class, 'show'])
         ->middleware('throttle:system-polling');
+});
+
+Route::middleware([
+    'auth:sanctum',
+    'active',
+    'throttle:api',
+    'role:system,admin,chief,chiefassistent,captain,president',
+])->group(function () {
+    Route::patch('/incidents/{incident}/close', CloseIncidentController::class);
 });

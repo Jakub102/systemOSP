@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Enums\ReadinessStatus;
 use App\Http\Requests\Api\Auth\RegisterRequest;
 use App\Mail\UserRegisteredMail;
 use App\Models\Account;
@@ -50,7 +51,7 @@ class RegisterController
                 'phone_number' => $data['phone_number'],
                 'firehouse_id' => $invitation->firehouse_id,
                 'is_active' => true,
-                'readiness_status' => 'active',
+                'readiness_status' => ReadinessStatus::ACTIVE->value,
             ]);
 
             $user->roles()->attach($invitation->role_id);
@@ -60,8 +61,8 @@ class RegisterController
         });
 
         rescue(
-            fn () => Mail::to($user->account->email)->send(new UserRegisteredMail($user->first_name)),
-            fn (\Throwable $e) => Log::error('Błąd wysyłki maila po rejestracji: '.$e->getMessage())
+            fn () => Mail::to($user->account->email)->queue(new UserRegisteredMail($user->first_name)),
+            fn (\Throwable $e) => Log::error('Błąd kolejkowania maila po rejestracji: '.$e->getMessage())
         );
 
         return response()->json(['message' => 'Konto zostało utworzone.'], 201);

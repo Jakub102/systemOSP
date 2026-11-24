@@ -1,22 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use App\Models\Invitation;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class UserInvitationMail extends Mailable
+class UserInvitationMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
+
+    public int $tries = 3;
 
     public function __construct(
         public Invitation $invitation,
         public string $plainToken,
-    ) {}
+    ) {
+        $this->afterCommit();
+    }
 
     public function envelope(): Envelope
     {

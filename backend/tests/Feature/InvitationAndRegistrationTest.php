@@ -50,7 +50,7 @@ class InvitationAndRegistrationTest extends TestCase
         $invitation = Invitation::where('email', 'nowy.strazak@osp.pl')->firstOrFail();
         $plainToken = null;
 
-        Mail::assertSent(UserInvitationMail::class, function (UserInvitationMail $mail) use ($invitation, &$plainToken) {
+        Mail::assertQueued(UserInvitationMail::class, function (UserInvitationMail $mail) use ($invitation, &$plainToken) {
             $plainToken = $mail->plainToken;
             $content = $mail->content();
 
@@ -78,7 +78,7 @@ class InvitationAndRegistrationTest extends TestCase
             'password_confirmation' => 'StrongPass123!',
         ])->assertCreated();
 
-        Mail::assertSent(UserRegisteredMail::class);
+        Mail::assertQueued(UserRegisteredMail::class);
         $this->assertDatabaseHas('accounts', ['email' => 'nowy.strazak@osp.pl']);
 
         // Ponowne użycie tego samego tokenu kończy się błędem walidacji

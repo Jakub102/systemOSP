@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
+use App\Enums\IncidentCategory;
 use App\Models\FcmToken;
 use App\Models\Incident;
 use Illuminate\Support\Facades\Log;
@@ -45,7 +48,7 @@ class FcmService
             ];
         }
 
-        $categoryName = Incident::CATEGORY_LABELS[$incident->main_category] ?? 'Zdarzenie';
+        $categoryName = IncidentCategory::tryFrom((string) $incident->main_category)?->label() ?? 'Zdarzenie';
         $title = $incident->sub_category
             ? "ALARM: {$categoryName} - {$incident->sub_category}"
             : "ALARM: {$categoryName}";

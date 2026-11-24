@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Requests\Api\Auth\UpdateReadinessRequest;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class UserController
 {
@@ -13,9 +16,14 @@ class UserController
     {
         $account = $request->user();
         $deviceName = $account->currentAccessToken()?->name ?? 'osp-api-token';
-        $account->currentAccessToken()?->delete();
-        $newToken = $account->createToken($deviceName)->plainTextToken;
-        $account->user?->update(['last_login' => now()]);
+
+        $newToken = DB::transaction(function () use ($account, $deviceName): string {
+            $account->currentAccessToken()?->delete();
+            $token = $account->createToken($deviceName)->plainTextToken;
+            $account->user?->update(['last_login' => now()]);
+
+            return $token;
+        });
 
         return response()->json([
             'token' => $newToken,

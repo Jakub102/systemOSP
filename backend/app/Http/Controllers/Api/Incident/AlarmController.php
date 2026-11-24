@@ -1,7 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Incident;
 
+use App\Enums\AttendanceStatus;
+use App\Enums\IncidentStatus;
+use App\Enums\ReadinessStatus;
 use App\Http\Requests\Api\Incident\IncidentRequest;
 use App\Http\Resources\IncidentResource;
 use App\Jobs\SendIncidentAlertJob;
@@ -16,8 +21,7 @@ class AlarmController
     public function __invoke(IncidentRequest $request): IncidentResource
     {
         $validated = $request->validated();
-        // Nowo wywołany alarm zawsze startuje ze statusem ACTIVE.
-        $validated['status'] = 'ACTIVE';
+        $validated['status'] = IncidentStatus::ACTIVE->value;
 
         $firehouseId = $request->user()?->user?->firehouse_id ?? Firehouse::value('id');
 
@@ -27,14 +31,14 @@ class AlarmController
             $readyFirefighterIds = User::query()
                 ->when($firehouseId, fn ($query) => $query->where('firehouse_id', $firehouseId))
                 ->where('is_active', true)
-                ->where('readiness_status', 'active')
+                ->where('readiness_status', ReadinessStatus::ACTIVE->value)
                 ->whereDoesntHave('roles', fn ($query) => $query->where('name', 'system'))
                 ->pluck('id');
 
             if ($readyFirefighterIds->isNotEmpty()) {
                 $pivotData = $readyFirefighterIds->mapWithKeys(fn ($userId) => [
                     $userId => [
-                        'attendance_status' => 'pending',
+                        'attendance_status' => AttendanceStatus::PENDING->value,
                         'confirmed_latitude' => null,
                         'confirmed_longitude' => null,
                         'confirmed_at' => null,

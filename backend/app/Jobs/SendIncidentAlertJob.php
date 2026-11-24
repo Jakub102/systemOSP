@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
+use App\Enums\IncidentStatus;
+use App\Enums\ReadinessStatus;
 use App\Models\FcmToken;
 use App\Models\Incident;
 use App\Models\User;
@@ -35,7 +39,7 @@ class SendIncidentAlertJob implements ShouldQueue
     {
         $incident = Incident::find($this->incidentId);
 
-        if (!$incident || $incident->status !== 'ACTIVE') {
+        if (!$incident || $incident->status !== IncidentStatus::ACTIVE->value) {
             return;
         }
 
@@ -43,7 +47,7 @@ class SendIncidentAlertJob implements ShouldQueue
         $readyUserIds = User::query()
             ->when($this->firehouseId, fn ($query) => $query->where('firehouse_id', $this->firehouseId))
             ->where('is_active', true)
-            ->where('readiness_status', 'active')
+            ->where('readiness_status', ReadinessStatus::ACTIVE->value)
             ->whereDoesntHave('roles', fn ($query) => $query->where('name', 'system'))
             ->pluck('id');
 

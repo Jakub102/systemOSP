@@ -43,8 +43,8 @@ class StoreController
         $invitation->save();
 
         rescue(
-            fn () => Mail::to($invitation->email)->send(new UserInvitationMail($invitation->loadMissing('firehouse'), $plainToken)),
-            fn (\Throwable $e) => Log::error('Błąd wysyłki maila z zaproszeniem: '.$e->getMessage())
+            fn () => Mail::to($invitation->email)->queue(new UserInvitationMail($invitation->loadMissing('firehouse'), $plainToken)),
+            fn (\Throwable $e) => Log::error('Błąd kolejkowania maila z zaproszeniem: '.$e->getMessage())
         );
 
         $message = $invitation->wasRecentlyCreated

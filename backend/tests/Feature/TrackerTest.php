@@ -102,4 +102,55 @@ class TrackerTest extends TestCase
             ->assertJsonPath('attendance_status', 'on_scene')
             ->assertJsonPath('should_stop_tracking', true);
     }
+
+    public function test_authorized_role_can_close_incident_and_firefighter_cannot(): void
+    {
+        $firehouse = Firehouse::factory()->create();
+
+        $firefighterAccount = Account::factory()->create();
+        $firefighter = User::factory()->create([
+            'account_id' => $firefighterAccount->id,
+            'firehouse_id' => $firehouse->id,
+        ]);
+        $firefighter->roles()->attach(Role::where('name', 'firefighter')->firstOrFail()->id);
+
+        $chiefAccount = Account::factory()->create();
+        $chief = User::factory()->create([
+            'account_id' => $chiefAccount->id,
+            'firehouse_id' => $firehouse->id,
+        ]);
+        $chief->roles()->attach(Role::where('name', 'chief')->firstOrFail()->id);
+
+        $incident = Incident::factory()->create(['status' => 'ACTIVE']);
+
+        // Zwykły strażak nie może zamknąć incydentu
+        $this->actingAs($firefighterAccount, 'sanctum')
+            ->patchJson("/api/incidents/{$incident->id}/close")
+            ->assertStatus(403);
+
+        // Naczelnik zamyka incydent
+        $this->actingAs($chiefAccount, 'sanctum')
+            ->patchJson("/api/incidents/{$incident->id}/close")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'END');
+
+        // Ponowne zamknięcie zwraca 409 Conflict
+        $this->actingAs($chiefAccount, 'sanctum')
+            ->patchJson("/api/incidents/{$incident->id}/close")
+            ->assertStatus(409);
+
+        // Zamknięty incydent znika z listy aktywnych i zatrzymuje tracking
+        $this->actingAs($firefighterAccount, 'sanctum')
+            ->getJson('/api/incidents/my')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->actingAs($firefighterAccount, 'sanctum')
+            ->postJson("/api/incidents/{$incident->id}/location", [
+                'latitude' => 54.51000,
+                'longitude' => 18.51000,
+            ])
+            ->assertOk()
+            ->assertJsonPath('should_stop_tracking', true);
+    }
 }

@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Device;
 
 use App\Http\Requests\Api\Device\RegisterDeviceTokenRequest;
+use App\Http\Requests\Api\Device\UnregisterDeviceTokenRequest;
 use App\Models\FcmToken;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class DeviceTokenController
 {
@@ -42,12 +44,9 @@ class DeviceTokenController
     /**
      * Usuwa token FCM dla bieżącego użytkownika (np. przy wylogowaniu).
      */
-    public function unregister(Request $request): JsonResponse
+    public function unregister(UnregisterDeviceTokenRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'token' => ['required', 'string', 'max:512'],
-        ]);
-
+        $validated = $request->validated();
         $user = $request->user()->user;
 
         FcmToken::where('user_id', $user->id)
