@@ -4,6 +4,7 @@
 node_modules/
 .env
 /mobile/todo.md
+.github
 
 # Firebase config - zawiera klucz API, nie commitujemy
 google-services.json
