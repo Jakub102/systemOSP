@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Api\Auth;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
+use App\Http\Requests\Api\Auth\UpdateReadinessRequest;
 use App\Http\Resources\UserResource;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class UserController
 {
@@ -18,7 +19,7 @@ class UserController
 
         return response()->json([
             'token' => $newToken,
-            'user' => new UserResource($account->loadMissing(['user.roles', 'user.firehouse'])->user)
+            'user' => new UserResource($account->loadMissing(['user.roles', 'user.firehouse'])->user),
         ], 200);
     }
 
@@ -29,11 +30,9 @@ class UserController
         return response()->json(['user' => new UserResource($account->user)], 200);
     }
 
-    public function updateReadiness(Request $request): JsonResponse
+    public function updateReadiness(UpdateReadinessRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'readiness_status' => ['required', 'string', 'in:active,in_active'],
-        ]);
+        $validated = $request->validated();
 
         $account = $request->user()->loadMissing(['user.roles', 'user.firehouse']);
         $user = $account->user;
@@ -47,5 +46,4 @@ class UserController
             'user' => new UserResource($user),
         ], 200);
     }
-
 }

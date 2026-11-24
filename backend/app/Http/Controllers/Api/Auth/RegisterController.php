@@ -49,7 +49,10 @@ class RegisterController
         });
 
         if ($user) {
-            Mail::to($user->account->email)->send(new UserRegisteredMail($user->first_name));
+            rescue(
+                fn () => Mail::to($user->account->email)->send(new UserRegisteredMail($user->first_name)),
+                fn (\Throwable $e) => \Illuminate\Support\Facades\Log::error('Błąd wysyłki maila po rejestracji: ' . $e->getMessage())
+            );
         }
 
         return response()->json(['message' => 'Konto zostało utworzone.'], 201);

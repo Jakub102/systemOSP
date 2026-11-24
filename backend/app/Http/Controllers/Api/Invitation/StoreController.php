@@ -39,7 +39,10 @@ class StoreController
 
         $invitation->save();
 
-        Mail::to($invitation->email)->send(new UserInvitationMail($invitation));
+        rescue(
+            fn () => Mail::to($invitation->email)->send(new UserInvitationMail($invitation->loadMissing('firehouse'))),
+            fn (\Throwable $e) => \Illuminate\Support\Facades\Log::error('Błąd wysyłki maila z zaproszeniem: ' . $e->getMessage())
+        );
 
         $message = $invitation->wasRecentlyCreated
             ? __('invitation.created')

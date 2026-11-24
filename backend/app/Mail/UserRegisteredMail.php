@@ -4,18 +4,27 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 class UserRegisteredMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    // Przekazujemy imię użytkownika do konstruktora
     public function __construct(public string $userName) {}
 
-    public function build()
+    public function envelope(): Envelope
     {
-        return $this->subject('Rejestracja zakończona sukcesem')
-                    ->view('emails.successRegistration');
+        return new Envelope(
+            subject: 'Rejestracja zakończona sukcesem',
+        );
+    }
+
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.successRegistration',
+        );
     }
 }

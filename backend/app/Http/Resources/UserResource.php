@@ -7,7 +7,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserResource extends JsonResource
 {
-
     public function toArray(Request $request): array
     {
         return [
@@ -16,8 +15,17 @@ class UserResource extends JsonResource
             'last_name' => $this->last_name,
             'phone_number' => $this->phone_number,
             'readiness_status' => $this->readiness_status,
-            'firehouse' => $this->firehouse, 
-            'roles' => $this->roles->pluck('display_name'),
+            'firehouse' => $this->whenLoaded('firehouse', fn () => $this->firehouse ? [
+                'id' => $this->firehouse->id,
+                'name' => $this->firehouse->name,
+                'street' => $this->firehouse->street,
+                'address' => $this->firehouse->address,
+                'postal_code' => $this->firehouse->postal_code,
+                'city' => $this->firehouse->city,
+                'latitude' => $this->firehouse->latitude,
+                'longitude' => $this->firehouse->longitude,
+            ] : null),
+            'roles' => $this->whenLoaded('roles', fn () => $this->roles->pluck('display_name')->values(), []),
             'full_name' => "{$this->first_name} {$this->last_name}",
             'tracking' => $this->whenPivotLoaded('incident_user', fn () => [
                 'attendance_status' => $this->pivot->attendance_status,
